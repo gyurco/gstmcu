@@ -1,6 +1,6 @@
 
 module gstmcu (
-    input m2clock,
+    input clk,
     input resb,
     input porb,
     input mde0,
@@ -12,6 +12,24 @@ module gstmcu (
     output de,
     output blank_n,
     output [6:0] hsc
+);
+
+wire mhz4,mhz8, time0,time1,time2,addrsel,m2clock,clk4,cycsel,latch;
+
+clockgen clockgen (
+    .clk(clk),
+    .resb(resb),
+    .porb(porb),
+    .mhz8(mhz8),
+    .mhz4(mhz4),
+    .clk4(clk4),
+    .time0(time0),
+    .time1(time1),
+    .time2(time2),
+    .addrsel(addrsel),
+    .m2clock(m2clock),
+    .cycsel(cycsel),
+    .latch(latch)
 );
 
 wire iihsync, iivsync;

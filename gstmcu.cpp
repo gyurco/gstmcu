@@ -11,7 +11,7 @@ static VerilatedVcdC *trace;
 static int tickcount;
 
 void tick(int c) {
-	tb->m2clock = c;
+	tb->clk = c;
 	tb->eval();
 	trace->dump(tickcount++);
 }
