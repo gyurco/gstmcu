@@ -266,15 +266,15 @@ module rlc1 (
 wire xc = ~c;
 wire xi = ~i;
 
-wire mca04 = !prb ? 0 : (!r ? (dr ^ ~mca10) ^ ai : mca04);
+wire mca04 = !prb ? 0 : (!r ? (dr ^ q) ^ ai : mca04);
 wire mca09 = ~(xl ? mca12 : dl);
 wire mca12 = xr ? mca16 : mca04;
 wire mca16 = ~(c ? mca09 : mca11);
 wire mca11 = i ? ~mca10 : mca10;
 wire mca10 = !prb ? 0 : (c ? mca09 : mca10);
 assign q = ~mca10;
-assign co = ~(i & ~mca10);
-assign ao = dr & ~mca10 & ai;
+assign co = ~(i & q);
+assign ao = (dr & q) | (dr & ai) | (q & ai); // MAND gate
 
 /*
 assign ao = dr & q;
@@ -305,7 +305,6 @@ module rlc2 (
 	output co
 );
 
-//wire mcb04 = !prb ? 0 : (!r ? (dr ^ ~mcb09) ^ ai : mcb04);
 wire mcb04 = !prb ? 0 : (!r ? dr ^ q ^ ai : mcb04);
 wire mcb08 = ~(xl ? mcb11 : dl);
 wire mcb11 = xr ? mcb15 : mcb04;
@@ -315,8 +314,7 @@ wire mcb09 = !prb ? 0 : (c ? mcb08 : mcb09);
 
 assign q = ~mcb09;
 assign co = ~(~xi & q);
-assign ao = dr & ~mcb09 & ai;
-//assign ao = (dr & q) | (dr & ai) | (q & ai);
+assign ao = (dr & q) | (dr & ai) | (q & ai); // MAND gate
 
 endmodule;
 
@@ -336,14 +334,14 @@ module rlc3 (
 	output co
 );
 
-wire mcc03 = !prb ? 0 : (!r ? ai ^ ~mcc08 : mcc03);
+wire mcc03 = !prb ? 0 : (!r ? ai ^ q : mcc03);
 wire mcc07 = ~(xl ? mcc09 : dl); // bug on schematic?
 wire mcc09 = xr ? mcc13 : mcc03;
 wire mcc13 = ~(c ? mcc07 : mcc10);
 wire mcc10 = xi ? mcc08 : ~mcc08;
 wire mcc08 = !prb ? 0 : (c ? mcc07 : mcc08);
 assign q = ~mcc08;
-assign co = ~(~xi & ~mcc08);
-assign ao = ~mcc08 & ai;
+assign co = ~(~xi & q);
+assign ao = q & ai;
 
 endmodule;
