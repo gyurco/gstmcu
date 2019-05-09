@@ -13,7 +13,8 @@ module clockgen (
 	output m2clock,
 	output clk4,
 	output latch,
-	output cycsel
+	output cycsel,
+	output lcycselb
 );
 
 assign clk4 = l2;
@@ -30,6 +31,7 @@ assign m2clock = ~time6;
 assign cycsel = !porb ? 0 : (~clk ? time6 : cycsel);
 wire latchb = !porb ? 1 : (clk ? ~(addrsel & ~time1) : latchb);
 assign latch = ~latchb;
+assign lcycselb = !porb ? 0 : (~clk ? ~time6 : lcycselb);
 
 reg l1, l2, l3;
 

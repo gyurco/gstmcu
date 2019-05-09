@@ -19,13 +19,13 @@ void tick(int c) {
 void print(bool rise) {
     std::cout << (rise ? "rise" : "fall");
     std::cout << "- hsc : " << std::setw(3) << (int)tb->hsc;
-    std::cout << " hsync " << bool(tb->hsync_n);
-    std::cout << " vsync " << bool(tb->vsync_n);
+    std::cout << " hsync " << bool(tb->HSYNC_N);
+    std::cout << " vsync " << bool(tb->VSYNC_N);
     std::cout << std::endl;
 }
 
 void dump(bool ntsc, bool mde1) {
-	int steps = 128*2048;
+	int steps = 128*2048*8;
 	bool disp;
 
 	tb->mde0 = 0;
