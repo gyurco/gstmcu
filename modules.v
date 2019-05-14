@@ -163,6 +163,8 @@ end
 
 endmodule;
 
+/* verilator lint_off UNOPTFLAT */
+
 module lt2 (
 	input       c,
 	input       dc,
@@ -175,37 +177,28 @@ module lt2 (
 
 assign q = ~xq;
 
+/* 4081ORG.PDF - dc and load are sync */
+/*
+always @(posedge c, negedge xr) begin
+    if (!xr) xq <= 1;
+    else xq <= l ? ~dl : ~dc;
+end;
+*/
+/* ST4081S.PDF - dc is sync, load is async */
+/*
+wire mc104 = xr & (c ? mc105 : dc);
+wire mc105 = l ? dl : mc104;
+assign xq = !xr ? 1 : (c ? ~mc104 : xq);
+*/
+
+/* And this works the best... */
 always @(posedge c, posedge l, negedge xr) begin
     if (!xr) xq <= 1;
-    else if(l) xq <= ~dl;
+    else if (l) xq <= ~dl;
     else xq <= ~dc;
-//    else begin
-//        xq <= l ? ~dl : ~dc;
-//    end
 end;
 
-/*
-wire latch_d;
-wire o1,o2,o3;
-reg latch;
-
-always @(*) begin
-    o1 = c ? o2 : dc;
-    o2 = l ? dl : o3;
-    latch_d = ~o3;
-    o3 = xr & o1;
-//    q = ~xr ? 0 : (~c ? latch_d : q); //orignal design with latch
-    q = ~xq;
-end
-
-always @(negedge c, negedge xr) begin
-    if (!xr) xq<=1;
-    else xq <= latch_d;
-end
-*/
 endmodule;
-
-/* verilator lint_off UNOPTFLAT */
 
 module rlc0 (
 	input	dr,
