@@ -7,6 +7,7 @@ module gstmcu (
     input mde1,
     input interlace,
     input ntsc,
+    input  [23:1] A,
     output HSYNC_N,
     output VSYNC_N,
     output DE,
@@ -15,9 +16,21 @@ module gstmcu (
     input  SREQ,
     output SLOAD_N,
     output SINT,
+    output [23:1] ADDR,
     output [6:0] hsc
 );
 
+always @(*) begin
+    casez ({ addrselb, ixdmab, snden, refb })
+        4'b00??: ADDR = 0; // DMA_ADDR
+        4'b01??: ADDR = A; // CPU_ADDR
+        4'b1??0: ADDR = 0; // REFRESH_ADDR
+        4'b1?11: ADDR = { 2'b0, snd };
+        4'b1?01: ADDR = { 2'b0, vid };
+    endcase
+end
+
+wire ixdmab = 1;
 wire mhz4,mhz8, time0,time1,time2,addrsel,m2clock,clk4,cycsel,lcycselb,latch;
 wire lcycsel = ~cycsel;
 wire addrselb = ~addrsel;
@@ -44,9 +57,9 @@ always @(posedge clk) begin
     if (stoff) sndon <= 0;
 end;
 //wire sndon = 1;
-wire sfrep = 1;
+wire sfrep = 0;
 wire stoff, sframe;
-wire vidclkb,frame,vidb,viden,sndclk,snden;
+wire refb,vidclkb,frame,vidb,viden,sndclk,snden,vos;
 
 mcucontrol mcucontrol (
     .porb(porb),
@@ -61,9 +74,11 @@ mcucontrol mcucontrol (
     .lcycsel(lcycsel),
     .time1(time1),
     .frame(frame),
+    .refb(refb),
     .vidb(vidb),
     .viden(viden),
     .vidclkb(vidclkb),
+    .vos(vos),
     .snd(snd),
     .sft(sft),
     .stoff(stoff),
@@ -143,7 +158,7 @@ vdegen vdegen (
     .vblank(vblank)
 );
 
-wire [21:0] vid, vld = 0;//{1'b0, 21'haaaaa};
+wire [21:1] vid, vld = 0;//{1'b0, 21'haaaaa};
 wire [7:0] hoff = 8'hf0;
 wire wloclb =1 ,wlocmb = 1, wlochb = 1;
 
@@ -160,7 +175,7 @@ vidcnt vidcnt (
     .vid(vid)
 );
 
-wire [21:0] snd, sfb, sft = {1'b0, 21'hf104};
+wire [21:1] snd, sfb, sft = 21'hf104;
 
 sndcnt sndcnt (
     .porb(porb),

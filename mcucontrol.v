@@ -12,14 +12,16 @@ module mcucontrol (
     input sreq,
     input sndon,
     input sfrep,
-    input [21:0] snd,
-    input [21:0] sft,
+    input [21:1] snd,
+    input [21:1] sft,
+    output refb,
     output frame,
     output vidb,
     output viden,
     output vidclkb,
+    output vos,
     output sndclk,
-    output snden,
+    output snden, // sadsel
     output reg sframe,
     output stoff,
     output dcyc_n,
@@ -35,6 +37,8 @@ assign viden = ~pk010;
 assign vidclkb = ~(~addrselb | pk010);
 assign sndclk = ~(addrselb & snden);
 assign snden = ~pk016 & pk024;
+assign refb = pk016 | pk024;
+assign vos = ~(pk010 & ~snden);
 
 /* verilator lint_off UNOPTFLAT */
 

@@ -4,12 +4,12 @@ module vidcnt (
     input         vidb,
     input         vidclkb,
     input  [ 7:0] hoff,
-    input  [21:0] vld,
+    input  [21:1] vld,
     input         frame,
     input         wloclb,
     input         wlocmb,
     input         wlochb,
-    output [21:0] vid
+    output [21:1] vid
 );
 
 reg pf071;
