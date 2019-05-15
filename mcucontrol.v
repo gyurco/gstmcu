@@ -11,14 +11,20 @@ module mcucontrol (
     input ivsync,
     input sreq,
     input sndon,
+    input sfrep,
+    input [21:0] snd,
+    input [21:0] sft,
     output frame,
     output vidb,
     output viden,
     output vidclkb,
     output sndclk,
     output snden,
+    output reg sframe,
+    output stoff,
     output dcyc_n,
-    output sload_n
+    output sload_n,
+    output reg sint
 );
 
 reg pk005,pk010,pk016,pk024,pk031;
@@ -44,11 +50,27 @@ always @(posedge c1, negedge porb) begin
 	    pk005 <= ivsync;
 	    pk010 <= ideb;
 	    pk016 <= hde1;
-	    pk024 <= sreq;
 	    pk031 <= sndon;
 	end
 end
 
+wire pk061 = (snd == sft) & ~c1;
+wire sintsb = sframe;
+assign stoff = pk061 & ~sfrep;
+
+always @(negedge clk, negedge pk031) begin
+    if (!pk031) sframe <= 0;
+    else sframe <= ~(pk061 & sfrep);
+end;
+
+always @(negedge c1, negedge sintsb) begin
+    if (!sintsb) sint <= 1;
+    else sint <= 0;
+end;
+
+always @(posedge c1, negedge pk031) begin
+    if (!pk031) pk024 <= 0;
+    else pk024 <= sreq;
+end;
 
 endmodule;
-

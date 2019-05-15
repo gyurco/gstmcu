@@ -70,6 +70,7 @@ int main(int argc, char **argv) {
 	tick(0);
 	tick(1);
 	tb->resb = 1;
+	tb->SREQ = 1;
 	dump(false,false);
 	dump(true,false);
 	dump(true,true);

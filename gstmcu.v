@@ -12,7 +12,9 @@ module gstmcu (
     output DE,
     output BLANK_N,
     output DCYC_N,
+    input  SREQ,
     output SLOAD_N,
+    output SINT,
     output [6:0] hsc
 );
 
@@ -37,8 +39,13 @@ clockgen clockgen (
     .latch(latch)
 );
 
-wire sndon = 0;
-wire sreq = 0;
+reg sndon = 1;
+always @(posedge clk) begin
+    if (stoff) sndon <= 0;
+end;
+//wire sndon = 1;
+wire sfrep = 1;
+wire stoff, sframe;
 wire vidclkb,frame,vidb,viden,sndclk,snden;
 
 mcucontrol mcucontrol (
@@ -49,7 +56,7 @@ mcucontrol mcucontrol (
     .ideb(ideb),
     .hde1(hde1),
     .addrselb(addrselb),
-    .sreq(sreq),
+    .sreq(SREQ),
     .sndon(sndon),
     .lcycsel(lcycsel),
     .time1(time1),
@@ -57,10 +64,16 @@ mcucontrol mcucontrol (
     .vidb(vidb),
     .viden(viden),
     .vidclkb(vidclkb),
+    .snd(snd),
+    .sft(sft),
+    .stoff(stoff),
+    .sfrep(sfrep),
+    .sframe(sframe),
     .sndclk(sndclk),
     .snden(snden),
     .dcyc_n(DCYC_N),
-    .sload_n(SLOAD_N)
+    .sload_n(SLOAD_N),
+    .sint(SINT)
 );
 
 wire iihsync, iivsync;
@@ -145,6 +158,17 @@ vidcnt vidcnt (
     .wlocmb(wlocmb),
     .wlochb(wlochb),
     .vid(vid)
+);
+
+wire [21:0] snd, sfb, sft = {1'b0, 21'hf104};
+
+sndcnt sndcnt (
+    .porb(porb),
+    .lresb(resb),
+    .sndclk(sndclk),
+    .sframe(sframe),
+    .sfb(sfb),
+    .snd(snd)
 );
 
 endmodule;
