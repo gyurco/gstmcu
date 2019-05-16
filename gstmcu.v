@@ -8,6 +8,7 @@ module gstmcu (
     input interlace,
     input ntsc,
     input  [23:1] A,
+    output LATCH,
     output HSYNC_N,
     output VSYNC_N,
     output DE,
@@ -31,7 +32,7 @@ always @(*) begin
 end
 
 wire ixdmab = 1;
-wire mhz4,mhz8, time0,time1,time2,addrsel,m2clock,clk4,cycsel,lcycselb,latch;
+wire mhz4,mhz8, time0,time1,time2,addrsel,m2clock,clk4,cycsel,lcycselb;
 wire lcycsel = ~cycsel;
 wire addrselb = ~addrsel;
 
@@ -49,7 +50,7 @@ clockgen clockgen (
     .m2clock(m2clock),
     .cycsel(cycsel),
     .lcycselb(lcycselb),
-    .latch(latch)
+    .latch(LATCH)
 );
 
 reg sndon = 1;
