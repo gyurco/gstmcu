@@ -11,7 +11,7 @@ static VerilatedVcdC *trace;
 static int tickcount;
 
 void tick(int c) {
-	tb->clk = c;
+	tb->clk32 = c;
 	tb->eval();
 	trace->dump(tickcount++);
 }
