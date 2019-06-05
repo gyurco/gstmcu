@@ -128,13 +128,48 @@ assign ROMP_N = ~romp;
 wire dmadir  = idev & ias & iuds & A[15:1] == { 12'h860, 3'b011 };
 wire dmadirb = ~dmadir;
 wire mdesel  = idev & ias & A[15:1] == { 12'h826, 3'b000 };
-wire syncsel = idev & ias & A[15:1] == { 12'h820, 3'b101 };
+wire syncsel = idev & ias & A[15:1] == { 12'h820, 3'b101 }; // FF820A-B
 wire scrlsel = idev & ias & ilds & A[15:1] == { 12'h826, 3'b010 };
 wire cartsel = idev & ias & A[15:1] == { 12'h900, 3'b000 };
 wire butsel  = idev & ias & A[15:1] == { 12'h920, 3'b000 };
 wire joysel  = idev & ias & A[15:1] == { 12'h920, 3'b001 };
 wire padsel  = idev & ias & A[15:3] == { 12'h921, 1'b1 };
 wire pensel  = idev & ias & A[15:2] == { 12'h922, 2'b00 };
+
+////////// REGISTER SELECT DECODE //////////
+
+wire regs    = idev & ias & A[15:12] == 4'h8 & ~A[8] & ~A[11];
+wire dma     =  A[9] &  A[10];  // FF85xx
+wire video   =  A[9] & ~A[10];  // FF82xx
+wire conf    = ~A[9] & ~A[10];  // FF80xx
+
+wire regrd   = irwz & A[7:4] == 4'h0 & ilds;
+wire regwr   = irwb & A[7:4] == 4'h0 & ilds;
+
+wire rconfigb = ~(conf & regrd & A[3:1] == 3'd0);  // FF8000-1
+wire rconfigw = ~(conf & regwr & A[3:1] == 3'd0);
+
+wire rvidbhb  = ~(video & regrd & A[3:1] == 3'd0); // FF8200-1
+wire wvidbhb  = ~(video & regwr & A[3:1] == 3'd0);
+wire rvidbmb  = ~(video & regrd & A[3:1] == 3'd1); // FF8202-3
+wire wvidbmb  = ~(video & regwr & A[3:1] == 3'd1);
+wire rlochb   = ~(video & regrd & A[3:1] == 3'd2); // FF8204-5
+wire wlochb   = ~(video & regwr & A[3:1] == 3'd2);
+wire rlocmb   = ~(video & regrd & A[3:1] == 3'd3); // FF8206-7
+wire wlocmb   = ~(video & regwr & A[3:1] == 3'd3);
+wire rloclb   = ~(video & regrd & A[3:1] == 3'd4); // FF8208-9
+wire wloclb   = ~(video & regwr & A[3:1] == 3'd4);
+wire rvidblb  = ~(video & regrd & A[3:1] == 3'd6); // FF820C-D
+wire wvidblb  = ~(video & regwr & A[3:1] == 3'd6);
+wire rhoffb   = ~(video & regrd & A[3:1] == 3'd7); // FF820E-F
+wire whoffb   = ~(video & regwr & A[3:1] == 3'd7);
+
+wire rdmahb   = ~(dma & regrd & A[3:1] == 3'd0);   // FF8500-1
+wire wdmah    = ~(dma & regwr & A[3:1] == 3'd0);
+wire rdmamb   = ~(dma & regrd & A[3:1] == 3'd0);   // FF8502-3
+wire wdmam    = ~(dma & regwr & A[3:1] == 3'd0);
+wire rdmalb   = ~(dma & regrd & A[3:1] == 3'd0);   // FF8504-5
+wire wdmal    = ~(dma & regwr & A[3:1] == 3'd0);
 
 /////// SYNC and INTERRUPT INTERFACE ///////
 
@@ -284,7 +319,6 @@ vdegen vdegen (
 
 wire [21:1] vid, vld = 0;//{1'b0, 21'haaaaa};
 wire [7:0] hoff = 8'hf0;
-wire wloclb =1 ,wlocmb = 1, wlochb = 1;
 
 vidcnt vidcnt (
     .porb(porb),
