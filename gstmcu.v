@@ -3,10 +3,7 @@ module gstmcu (
     input clk32,
     input resb,
     input porb,
-    input mde0,
-    input mde1,
     input interlace,
-    input ntsc,
     input  FC0,
     input  FC1,
     input  FC2,
@@ -22,6 +19,7 @@ module gstmcu (
     output IPL0_N,
     output IPL1_N,
     output IPL2_N,
+    output DTACK_N,
     output IACK_N,
     output ROM0_N,
     output ROM1_N,
@@ -125,11 +123,13 @@ assign ROM5_N = ~irom5;
 assign ROM6_N = ~irom6;
 assign ROMP_N = ~romp;
 
+wire iram = 0;
+
 wire dmadir  = idev & ias & iuds & A[15:1] == { 12'h860, 3'b011 };
 wire dmadirb = ~dmadir;
-wire mdesel  = idev & ias & A[15:1] == { 12'h826, 3'b000 };
+wire mdesel  = idev & ias & A[15:1] == { 12'h826, 3'b000 }; // FF8260-1
 wire syncsel = idev & ias & A[15:1] == { 12'h820, 3'b101 }; // FF820A-B
-wire scrlsel = idev & ias & ilds & A[15:1] == { 12'h826, 3'b010 };
+wire scrlsel = idev & ias & ilds & A[15:1] == { 12'h826, 3'b010 }; // FF8264-5
 wire cartsel = idev & ias & A[15:1] == { 12'h900, 3'b000 };
 wire butsel  = idev & ias & A[15:1] == { 12'h920, 3'b000 };
 wire joysel  = idev & ias & A[15:1] == { 12'h920, 3'b001 };
@@ -139,37 +139,45 @@ wire pensel  = idev & ias & A[15:2] == { 12'h922, 2'b00 };
 ////////// REGISTER SELECT DECODE //////////
 
 wire regs    = idev & ias & A[15:12] == 4'h8 & ~A[8] & ~A[11];
-wire dma     =  A[9] &  A[10];  // FF85xx
+wire dma     =  A[9] &  A[10];  // FF86xx
 wire video   =  A[9] & ~A[10];  // FF82xx
 wire conf    = ~A[9] & ~A[10];  // FF80xx
+wire vmapb   = ~(idev & A[15:6] == { 8'h82, 2'b01 }); // FF824x-FF827x - video regs also in shifter
 
 wire regrd   = irwz & A[7:4] == 4'h0 & ilds;
 wire regwr   = irwb & A[7:4] == 4'h0 & ilds;
 
-wire rconfigb = ~(conf & regrd & A[3:1] == 3'd0);  // FF8000-1
-wire rconfigw = ~(conf & regwr & A[3:1] == 3'd0);
+wire rconfigb = ~(regs & conf & regrd & A[3:1] == 3'd0);  // FF8000-1
+wire rconfigw = ~(regs & conf & regwr & A[3:1] == 3'd0);
 
-wire rvidbhb  = ~(video & regrd & A[3:1] == 3'd0); // FF8200-1
-wire wvidbhb  = ~(video & regwr & A[3:1] == 3'd0);
-wire rvidbmb  = ~(video & regrd & A[3:1] == 3'd1); // FF8202-3
-wire wvidbmb  = ~(video & regwr & A[3:1] == 3'd1);
-wire rlochb   = ~(video & regrd & A[3:1] == 3'd2); // FF8204-5
-wire wlochb   = ~(video & regwr & A[3:1] == 3'd2);
-wire rlocmb   = ~(video & regrd & A[3:1] == 3'd3); // FF8206-7
-wire wlocmb   = ~(video & regwr & A[3:1] == 3'd3);
-wire rloclb   = ~(video & regrd & A[3:1] == 3'd4); // FF8208-9
-wire wloclb   = ~(video & regwr & A[3:1] == 3'd4);
-wire rvidblb  = ~(video & regrd & A[3:1] == 3'd6); // FF820C-D
-wire wvidblb  = ~(video & regwr & A[3:1] == 3'd6);
-wire rhoffb   = ~(video & regrd & A[3:1] == 3'd7); // FF820E-F
-wire whoffb   = ~(video & regwr & A[3:1] == 3'd7);
+wire rvidbhb  = ~(regs & video & regrd & A[3:1] == 3'd0); // FF8200-1
+wire wvidbhb  = ~(regs & video & regwr & A[3:1] == 3'd0);
+wire rvidbmb  = ~(regs & video & regrd & A[3:1] == 3'd1); // FF8202-3
+wire wvidbmb  = ~(regs & video & regwr & A[3:1] == 3'd1);
+wire rlochb   = ~(regs & video & regrd & A[3:1] == 3'd2); // FF8204-5
+wire wlochb   = ~(regs & video & regwr & A[3:1] == 3'd2);
+wire rlocmb   = ~(regs & video & regrd & A[3:1] == 3'd3); // FF8206-7
+wire wlocmb   = ~(regs & video & regwr & A[3:1] == 3'd3);
+wire rloclb   = ~(regs & video & regrd & A[3:1] == 3'd4); // FF8208-9
+wire wloclb   = ~(regs & video & regwr & A[3:1] == 3'd4);
+wire rvidblb  = ~(regs & video & regrd & A[3:1] == 3'd6); // FF820C-D
+wire wvidblb  = ~(regs & video & regwr & A[3:1] == 3'd6);
+wire rhoffb   = ~(regs & video & regrd & A[3:1] == 3'd7); // FF820E-F
+wire whoffb   = ~(regs & video & regwr & A[3:1] == 3'd7);
 
-wire rdmahb   = ~(dma & regrd & A[3:1] == 3'd0);   // FF8500-1
-wire wdmah    = ~(dma & regwr & A[3:1] == 3'd0);
-wire rdmamb   = ~(dma & regrd & A[3:1] == 3'd0);   // FF8502-3
-wire wdmam    = ~(dma & regwr & A[3:1] == 3'd0);
-wire rdmalb   = ~(dma & regrd & A[3:1] == 3'd0);   // FF8504-5
-wire wdmal    = ~(dma & regwr & A[3:1] == 3'd0);
+wire rdmahb   = ~(regs & dma & regrd & A[3:1] == 3'd4);   // FF8608-9
+wire wdmah    = ~(regs & dma & regwr & A[3:1] == 3'd4);
+wire rdmamb   = ~(regs & dma & regrd & A[3:1] == 3'd5);   // FF860A-B
+wire wdmam    = ~(regs & dma & regwr & A[3:1] == 3'd5);
+wire rdmalb   = ~(regs & dma & regrd & A[3:1] == 3'd6);   // FF860C-D
+wire wdmal    = ~(regs & dma & regwr & A[3:1] == 3'd6);
+
+wire regxackb = ~((regs & (A[9] | ~A[10]) & (~dma | A[3]) & A[7:4] == 4'h0) | ~srgackb);
+
+// sound regs
+
+wire srgackb = ~(idev & ias & A[15:5] == { 8'h89, 3'b000 }); // FF890x-FF891x
+wire smapb   = ~(idev & A[15:5] == { 8'h89, 3'b001 }); // FF892x-FF893x - sound regs also in shifter
 
 /////// SYNC and INTERRUPT INTERFACE ///////
 
@@ -188,6 +196,21 @@ register vintb_r(clk32, ~(resb & porb & hclrb), 0, ~iivsync, 0, vintb);
 
 wire gamecart;
 register gamecart_r(clk32, 0, ~(resb & porb), irwb & cartsel & iuds, id[8], gamecart);
+wire noscroll;
+latch noscroll_l(clk32, ~(resb & porb), 0, scrlsel, ~|id[3:0], noscroll);
+wire mde1;
+register mde1_r(clk32, 0, ~(resb & porb), ~(irwb & mdesel & iuds), id[9], mde1);
+wire mde0;
+register mde0_r(clk32, 0, ~(resb & porb), ~(irwb & mdesel & iuds), id[8], mde0);
+wire pal;
+register pal_r(clk32, 0, ~(resb & porb), ~(irwb & syncsel & iuds), id[9], pal);
+wire ntsc = ~pal;
+wire drw;
+register drw_r(clk32, ~(resb & porb), 0, dmadirb, id[8], drw);
+
+//////// BUS TIMING GENERATOR ///////////////
+
+assign DTACK_N = ~(~cmpcycb | ~romxb | ~regxackb | joysel | cartsel | syncsel);
 
 ////////////////////////////////////////////
 
@@ -221,11 +244,20 @@ end;
 wire sfrep = 0;
 wire stoff, sframe;
 wire refb,vidclkb,frame,vidb,viden,sndclk,snden,vos;
+wire cmpcycb;
 
 mcucontrol mcucontrol (
     .porb(porb),
     .resb(resb),
     .clk(clk),
+    .ias(ias),
+    .idev(idev),
+    .iram(iram),
+    .iuds(iuds),
+    .ilds(ilds),
+    .irwz(irwz),
+    .vmapb(vmapb),
+    .smapb(smapb),
     .ivsync(ivsync),
     .ideb(ideb),
     .hde1(hde1),
@@ -247,6 +279,7 @@ mcucontrol mcucontrol (
     .sframe(sframe),
     .sndclk(sndclk),
     .snden(snden),
+    .cmpcycb(cmpcycb),
     .dcyc_n(DCYC_N),
     .sload_n(SLOAD_N),
     .sint(SINT)
@@ -272,7 +305,6 @@ hsyncgen hsyncgen (
 
 wire cpal, cntsc, hde1;
 wire ideb = ~DE;
-wire noscroll = 0;
 
 hdegen hdegen (
     .m2clock(m2clock),
