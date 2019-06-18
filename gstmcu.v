@@ -92,8 +92,9 @@ assign IACK_N = ~(iiack & A[3:1] == 3'b110);
 assign VPA_N = ~((idev & ias & A[15:9] == { 4'hF, 3'b110 }) | ~vclrb | ~hclrb); // FFFCxx - FFFDxx or VINT/HINT ack
 
 assign MFPCS_N = ~(idev & ias & A[15:6] == { 8'hFA, 2'b00 });  // FFFA0x-FFFA3x
-assign SNDIR = idev & ias & A[15:8] == 8'h88 & ~irwz;
-assign SNDCS = idev & ias & A[15:8] == 8'h88 & ~A[1];          // FF88xx
+wire   isndcsb = ~(idev & ias & A[15:8] == 8'h88);             // FF88xx
+assign SNDIR = ~isndcsb & ~irwz;
+assign SNDCS = ~isndcsb & ~A[1];
 assign N6850 = ~(idev & ivma & A[15:3] == { 12'hFC0, 1'b0 });  // FFFC00-FFFC07
 assign FCS_N = ~(idev & ias & ilds & iuds & A[15:2] == { 12'h860, 2'b01 }); // FF8604-FF8607
 assign RTCCS_N = ~(idev & ias & A[15:5] == { 8'hFC, 3'b001 }); // FFFC2x-FFFC3x
@@ -177,7 +178,26 @@ wire regxackb = ~((regs & (A[9] | ~A[10]) & (~dma | A[3]) & A[7:4] == 4'h0) | ~s
 // sound regs
 
 wire srgackb = ~(idev & ias & A[15:5] == { 8'h89, 3'b000 }); // FF890x-FF891x
-wire smapb   = ~(idev & A[15:5] == { 8'h89, 3'b001 }); // FF892x-FF893x - sound regs also in shifter
+wire smapb   = ~(idev & A[15:5] == { 8'h89, 3'b001 });       // FF892x-FF893x - sound regs in shifter
+
+wire rscntlb = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h890, 3'd0 });
+wire wscntlb = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h890, 3'd0 });
+wire rsfbhb  = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h890, 3'd1 });
+wire wsfbhb  = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h890, 3'd1 });
+wire rsfbmb  = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h890, 3'd2 });
+wire wsfbmb  = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h890, 3'd2 });
+wire rsfblb  = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h890, 3'd3 });
+wire wsfblb  = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h890, 3'd3 });
+wire rsfchb  = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h890, 3'd4 });
+wire rsfcmb  = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h890, 3'd5 });
+wire rsfclb  = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h890, 3'd6 });
+wire rsfthb  = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h890, 3'd7 });
+wire wsfthb  = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h890, 3'd7 });
+wire rsftmb  = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h891, 3'd0 });
+wire wsftmb  = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h891, 3'd0 });
+wire rsftlb  = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h891, 3'd1 });
+wire wsftlb  = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h891, 3'd1 });
+
 
 /////// SYNC and INTERRUPT INTERFACE ///////
 
@@ -209,8 +229,11 @@ wire drw;
 register drw_r(clk32, ~(resb & porb), 0, dmadirb, id[8], drw);
 
 //////// BUS TIMING GENERATOR ///////////////
+wire p8015, p8016;
+register p8015_r(clk32, 0, isndcsb, mhz8, ~isndcsb, p8015);
+register p8016_r(clk32, 0, isndcsb, mhz8, p8015, p8016); // snd cs delayed by 2 8MHz cycles
 
-assign DTACK_N = ~(~cmpcycb | ~romxb | ~regxackb | joysel | cartsel | syncsel);
+assign DTACK_N = ~(p8016 | ~cmpcycb | ~romxb | ~regxackb | joysel | cartsel | syncsel);
 
 ////////////////////////////////////////////
 
