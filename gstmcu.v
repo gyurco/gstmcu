@@ -16,6 +16,11 @@ module gstmcu (
     input  [23:1] A,
     input  [15:0] DIN,
     output [15:0] DOUT,
+    output MHZ8,
+    output MHZ8_EN1,
+    output MHZ8_EN2,
+    output MHZ4,
+    output MHZ4_EN,
     output IPL0_N,
     output IPL1_N,
     output IPL2_N,
@@ -50,10 +55,6 @@ module gstmcu (
     output [23:1] ADDR,
     output [6:0] hsc
 );
-
-// For simulation only!
-reg clk;
-always @(posedge clk32) clk <= ~clk;
 
 ///////// ADDRESS BUS MUX ////////
 
@@ -230,24 +231,28 @@ register drw_r(clk32, ~(resb & porb), 0, dmadirb, id[8], drw);
 
 //////// BUS TIMING GENERATOR ///////////////
 wire p8015, p8016;
-register p8015_r(clk32, 0, isndcsb, mhz8, ~isndcsb, p8015);
-register p8016_r(clk32, 0, isndcsb, mhz8, p8015, p8016); // snd cs delayed by 2 8MHz cycles
+register p8015_r(clk32, 0, isndcsb, MHZ8, ~isndcsb, p8015);
+register p8016_r(clk32, 0, isndcsb, MHZ8, p8015, p8016); // snd cs delayed by 2 8MHz cycles
 
 assign DTACK_N = ~(p8016 | ~cmpcycb | ~romxb | ~regxackb | joysel | cartsel | syncsel);
 
 ////////////////////////////////////////////
 
 wire ixdmab = 1;
-wire mhz4,mhz8, time0,time1,time2,addrsel,m2clock,clk4,cycsel,lcycselb;
+wire clk,time0,time1,time2,addrsel,m2clock,clk4,cycsel;
 wire lcycsel = ~cycsel;
 wire addrselb = ~addrsel;
 
 clockgen clockgen (
+    .clk32(clk32),
     .clk(clk),
     .resb(resb),
     .porb(porb),
-    .mhz8(mhz8),
-    .mhz4(mhz4),
+    .mhz8(MHZ8),
+    .mhz8_en1(MHZ8_EN1),
+    .mhz8_en2(MHZ8_EN2),
+    .mhz4(MHZ4),
+    .mhz4_en(MHZ4_EN),
     .clk4(clk4),
     .time0(time0),
     .time1(time1),
@@ -255,7 +260,6 @@ clockgen clockgen (
     .addrsel(addrsel),
     .m2clock(m2clock),
     .cycsel(cycsel),
-    .lcycselb(lcycselb),
     .latch(LATCH)
 );
 
