@@ -32,7 +32,7 @@ void write_reg(int addr, int data)
     tb->A = addr >> 1;
     tb->DIN = data;
     tb->RW = 0;
-    while (tb->DTACK_N) {
+    while (tb->DTACK_N && tb->BERR_N) {
 	tick(0);
 	tick(1);
     }
@@ -103,6 +103,7 @@ int main(int argc, char **argv) {
 	tb->SREQ = 1;
 	dump(false,false,false);
 	dump(true,false,true);
+	write_reg(0xff0000, 0); //generate bus error
 	dump(true,true,false);
 
 	trace->close();

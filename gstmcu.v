@@ -21,6 +21,7 @@ module gstmcu (
     output MHZ8_EN2,
     output MHZ4,
     output MHZ4_EN,
+    output BERR_N,
     output IPL0_N,
     output IPL1_N,
     output IPL2_N,
@@ -212,6 +213,17 @@ wire hintb, hint = ~hintb;
 register hintb_r(clk32, ~(resb & porb & vclrb), 0, ~iihsync, 0, hintb);
 wire vintb;
 register vintb_r(clk32, ~(resb & porb & hclrb), 0, ~iivsync, 0, vintb);
+
+//////// BUS ERROR GENERATION //////////////
+
+reg [6:0] berr_cnt;
+assign BERR_N = ~berr_cnt[6];
+
+always @(posedge clk32, negedge porb) begin
+    if (!porb) berr_cnt <= 0;
+    else if (~ias) berr_cnt <= 0;
+    else if (MHZ8_EN1) berr_cnt <= berr_cnt + 1'd1;
+end
 
 //////// DMA/VIDEO REGISTERS ///////////////
 
