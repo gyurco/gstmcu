@@ -11,21 +11,34 @@ module register (
 
 reg val_reg;
 reg c_d;
+/*
+always @(posedge c, posedge s, posedge r)
+begin
+    if (r)
+        q <= 0;
+    else if (s)
+        q <= 1;
+    else
+        q <= d;
+end
+*/
+reg q_r;
 
 always @(*) begin
     if (r)
         q = 0;
     else if (s)
         q = 1;
-    else if (~c_d & c)
-        q = d;
     else
         q = val_reg;
 end
 
-always @(posedge clock) begin
+always @(negedge clock) begin
     c_d <= c;
-    val_reg <= q;
+    if  (~c_d & c)
+        val_reg <= d;
+    else
+        val_reg <= q;
 end
 
 endmodule

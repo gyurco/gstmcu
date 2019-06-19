@@ -102,6 +102,7 @@ int main(int argc, char **argv) {
 	tb->resb = 1;
 	tb->SREQ = 1;
 	dump(false,false,false);
+	write_reg(0xff8800, 0); //write to AY
 	dump(true,false,true);
 	write_reg(0xff0000, 0); //generate bus error
 	dump(true,true,false);
