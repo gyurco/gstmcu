@@ -208,6 +208,10 @@ wire wsftmb  = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h891, 3'd0 });
 wire rsftlb  = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h891, 3'd1 });
 wire wsftlb  = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h891, 3'd1 });
 
+/////////// DATA BUS INTERFACE /////////////
+
+assign DOUT[15:8] = { 6'b111111, idout_h };
+assign DOUT[ 7:0] = vid_o;
 
 /////// SYNC and INTERRUPT INTERFACE ///////
 
@@ -249,6 +253,14 @@ wire ntsc = ~pal;
 wire drw;
 register drw_r(clk32, ~(resb & porb), 0, dmadirb, id[8], drw);
 
+wire [9:8] idout_h;
+always @(*) begin
+	idout_h = 2'b11;
+	if (cartsel & irwz & iuds) idout_h = { 1'b0, gamecart };
+	if (syncsel & irwz & iuds) idout_h = { pal, 1'b0 };
+//    udenb = ~(irwz & iuds & (cartsel | syncsel));
+end
+
 ////////////// VIDEO REGISTERS ////////////////
 
 wire [7:0] hoff;
@@ -259,6 +271,17 @@ latch #(.WIDTH(8)) vld_ml(clk32, 0, ~(resb & porb), ~wvidbmb, id[7:0], vld[15: 8
 latch #(.WIDTH(6)) vld_hl(clk32, 0, ~(resb & porb), ~wvidbhb, id[5:0], vld[21:16]);
 wire [3:0] conf_reg;
 latch #(.WIDTH(4)) conf_l(clk32, 0, ~(resb & porb), ~wconfigb, id[3:0], conf_reg[3:0]);
+
+wire [7:0] vid_o;
+
+always @(*) begin
+	vid_o = 8'hff;
+	if (~rhoffb)   vid_o = hoff;
+	if (~rvidblb)  vid_o = { vld[ 7: 1], 1'b0 };
+	if (~rvidbmb)  vid_o = vld[15:8];
+	if (~rvidbhb)  vid_o = { 2'b00, vld[21:16] };
+	if (~rconfigb) vid_o = { 4'b0000, conf_reg };
+end
 
 //////// BUS TIMING GENERATOR /////////////////
 reg sndack;  // snd cs delayed by 2 8MHz cycles
