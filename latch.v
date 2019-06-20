@@ -5,11 +5,13 @@ module latch (
     input s,    // set
     input r,    // reset
     input g,    // gate
-    input d,    // input
-    output q    // output
+    input  [WIDTH-1:0] d, // input
+    output [WIDTH-1:0] q  // output
 );
 
-reg val_reg;
+parameter WIDTH = 1;
+
+reg [WIDTH-1:0] val_reg;
 
 always @(*) begin
     if (r)

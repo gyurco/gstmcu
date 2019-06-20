@@ -159,7 +159,7 @@ wire regrd   = irwz & A[7:4] == 4'h0 & ilds;
 wire regwr   = irwb & A[7:4] == 4'h0 & ilds;
 
 wire rconfigb = ~(regs & conf & regrd & A[3:1] == 3'd0);  // FF8000-1
-wire rconfigw = ~(regs & conf & regwr & A[3:1] == 3'd0);
+wire wconfigb = ~(regs & conf & regwr & A[3:1] == 3'd0);
 
 wire rvidbhb  = ~(regs & video & regrd & A[3:1] == 3'd0); // FF8200-1
 wire wvidbhb  = ~(regs & video & regwr & A[3:1] == 3'd0);
@@ -249,7 +249,18 @@ wire ntsc = ~pal;
 wire drw;
 register drw_r(clk32, ~(resb & porb), 0, dmadirb, id[8], drw);
 
-//////// BUS TIMING GENERATOR ///////////////
+////////////// VIDEO REGISTERS ////////////////
+
+wire [7:0] hoff;
+latch #(.WIDTH(8)) hoff_l(clk32, 0, ~(resb & porb), ~whoffb, id[7:0], hoff);
+wire [21:1] vld;
+latch #(.WIDTH(7)) vld_ll(clk32, 0, ~(resb & porb), ~wvidblb, id[7:1], vld[ 7: 1]);
+latch #(.WIDTH(8)) vld_ml(clk32, 0, ~(resb & porb), ~wvidbmb, id[7:0], vld[15: 8]);
+latch #(.WIDTH(6)) vld_hl(clk32, 0, ~(resb & porb), ~wvidbhb, id[5:0], vld[21:16]);
+wire [3:0] conf_reg;
+latch #(.WIDTH(4)) conf_l(clk32, 0, ~(resb & porb), ~wconfigb, id[3:0], conf_reg[3:0]);
+
+//////// BUS TIMING GENERATOR /////////////////
 reg sndack;  // snd cs delayed by 2 8MHz cycles
 always @(posedge clk32, posedge isndcsb) begin
 	reg sndack1;
@@ -404,8 +415,7 @@ vdegen vdegen (
     .vblank(vblank)
 );
 
-wire [21:1] vid, vld = 0;//{1'b0, 21'haaaaa};
-wire [7:0] hoff = 8'hf0;
+wire [21:1] vid;
 
 vidcnt vidcnt (
     .porb(porb),

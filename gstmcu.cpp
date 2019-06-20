@@ -101,6 +101,9 @@ int main(int argc, char **argv) {
 	tick(1);
 	tb->resb = 1;
 	tb->SREQ = 1;
+	write_reg(0xff8200, 0x01); // video base hi
+	write_reg(0xff8202, 0xbb); // video base mid
+	write_reg(0xff820c, 0xcc); // video base lo
 	dump(false,false,false);
 	write_reg(0xff8800, 0); //write to AY
 	write_reg(0x00ffff, 0xaaaa); //write to RAM
