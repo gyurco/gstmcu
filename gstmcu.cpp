@@ -103,6 +103,7 @@ int main(int argc, char **argv) {
 	tb->SREQ = 1;
 	dump(false,false,false);
 	write_reg(0xff8800, 0); //write to AY
+	write_reg(0x00ffff, 0xaaaa); //write to RAM
 	dump(true,false,true);
 	write_reg(0xff0000, 0); //generate bus error
 	dump(true,true,false);

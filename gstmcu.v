@@ -35,6 +35,7 @@ module gstmcu (
     output ROM5_N,
     output ROM6_N,
     output ROMP_N,
+    output RAM_N,
     output VPA_N,
     output MFPCS_N,
     output SNDIR,
@@ -64,8 +65,8 @@ always @(*) begin
         4'b00??: ADDR = 0; // DMA_ADDR
         4'b01??: ADDR = A; // CPU_ADDR
         4'b1??0: ADDR = 0; // REFRESH_ADDR
-        4'b1?11: ADDR = { 2'b0, snd };
-        4'b1?01: ADDR = { 2'b0, vid };
+        4'b1?11: ADDR = { 2'b0, snd }; // SND DMA ADDR
+        4'b1?01: ADDR = { 2'b0, vid }; // VIDEO ADDR
     endcase
 end
 
@@ -126,7 +127,14 @@ assign ROM5_N = ~irom5;
 assign ROM6_N = ~irom6;
 assign ROMP_N = ~romp;
 
-wire iram = 0;
+wire system = ifc2z | A[15:11] == 0;
+wire irama = |A[21:16];
+wire iramb = fcx & ~A[23] & ~A[22];
+wire iramaa = irama & iramb; // 01xxxxx - 3fxxxxx
+wire iramc = overlap | fcx | system;
+wire iramab = A[23:16] == 0 & iramc;
+wire iram = iramaa | iramab | ~ixdmab | ~resb;
+assign RAM_N = ~iram;
 
 wire dmadir  = idev & ias & iuds & A[15:1] == { 12'h860, 3'b011 };
 wire dmadirb = ~dmadir;
@@ -242,11 +250,17 @@ wire drw;
 register drw_r(clk32, ~(resb & porb), 0, dmadirb, id[8], drw);
 
 //////// BUS TIMING GENERATOR ///////////////
-wire p8015, p8016;
-register p8015_r(clk32, 0, isndcsb, MHZ8, ~isndcsb, p8015);
-register p8016_r(clk32, 0, isndcsb, MHZ8, p8015, p8016); // snd cs delayed by 2 8MHz cycles
+reg sndack;  // snd cs delayed by 2 8MHz cycles
+always @(posedge clk32, posedge isndcsb) begin
+	reg sndack1;
+	if (isndcsb) { sndack, sndack1 } <= 0;
+	else if (MHZ8_EN1) begin
+		sndack1 <= ~isndcsb;
+		sndack  <= sndack1;
+	end
+end
 
-assign DTACK_N = ~(p8016 | ~cmpcycb | ~romxb | ~regxackb | joysel | cartsel | syncsel);
+assign DTACK_N = ~(sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | joysel | cartsel | syncsel);
 
 ////////////////////////////////////////////
 
@@ -283,7 +297,7 @@ end;
 wire sfrep = 0;
 wire stoff, sframe;
 wire refb,vidclkb,frame,vidb,viden,sndclk,snden,vos;
-wire cmpcycb;
+wire cmpcycb, ramcycb;
 
 mcucontrol mcucontrol (
     .porb(porb),
@@ -295,6 +309,7 @@ mcucontrol mcucontrol (
     .iuds(iuds),
     .ilds(ilds),
     .irwz(irwz),
+    .ixdmab(ixdmab),
     .vmapb(vmapb),
     .smapb(smapb),
     .ivsync(ivsync),
@@ -319,6 +334,7 @@ mcucontrol mcucontrol (
     .sndclk(sndclk),
     .snden(snden),
     .cmpcycb(cmpcycb),
+    .ramcycb(ramcycb),
     .dcyc_n(DCYC_N),
     .sload_n(SLOAD_N),
     .sint(SINT)

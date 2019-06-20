@@ -9,6 +9,7 @@ module mcucontrol (
     input iuds,
     input ilds,
     input irwz,
+    input ixdmab,
     input vmapb,
     input smapb,
     input ideb,
@@ -23,6 +24,7 @@ module mcucontrol (
     input [21:1] snd,
     input [21:1] sft,
     output cmpcycb,
+    output ramcycb,
     output refb,
     output frame,
     output vidb,
@@ -38,7 +40,7 @@ module mcucontrol (
     output reg sint
 );
 
-reg pk005,pk010,pk016,pk024,pk031,pl002;
+reg pk005,pk010,pk016,pk024,pk031,pl001,pl002;
 wire c1 = ~(lcycsel & time1);
 assign frame = ~pk005;
 assign vidb = pk010;
@@ -49,8 +51,10 @@ assign snden = ~pk016 & pk024;
 assign refb = pk016 | pk024;
 assign vos = ~(pk010 & ~snden);
 assign cmpcycb = ~pl002;
+assign ramcycb = ~pl001;
 
 wire cmap = (~irwz | iuds | ilds) & (~vmapb | ~smapb) & idev & ias;
+wire ramsel = (~irwz | ilds | iuds) & ixdmab & ias & iram;
 
 /* verilator lint_off UNOPTFLAT */
 
@@ -92,6 +96,11 @@ end;
 always @(posedge lcycsel, negedge cmap) begin
     if (!cmap) pl002 <= 0;
     else pl002 <= cmap;
+end;
+
+always @(posedge lcycsel, negedge ramsel) begin
+    if (!ramsel) pl001 <= 0;
+    else pl001 <= ramsel;
 end;
 
 endmodule;
