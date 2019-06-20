@@ -211,7 +211,7 @@ wire wsftlb  = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h891, 3'd1 });
 /////////// DATA BUS INTERFACE /////////////
 
 assign DOUT[15:8] = { 6'b111111, idout_h };
-assign DOUT[ 7:0] = vid_o;
+assign DOUT[ 7:0] = vid_o & snd_o;
 
 /////// SYNC and INTERRUPT INTERFACE ///////
 
@@ -277,13 +277,47 @@ wire [7:0] vid_o;
 always @(*) begin
 	vid_o = 8'hff;
 	if (~rhoffb)   vid_o = hoff;
-	if (~rvidblb)  vid_o = { vld[ 7: 1], 1'b0 };
+	if (~rvidblb)  vid_o = { vld[7:1], 1'b0 };
 	if (~rvidbmb)  vid_o = vld[15:8];
 	if (~rvidbhb)  vid_o = { 2'b00, vld[21:16] };
 	if (~rconfigb) vid_o = { 4'b0000, conf_reg };
 end
 
+////////////// SOUND REGISTERS ////////////////
+
+wire [21:1] sfb, sft, sft_l;
+wire  [3:1] snd_ctrl;
+wire sndon;
+wire sfrep = snd_ctrl[1];
+
+latch #(.WIDTH(7)) sfb_ll(clk32, 0, (~resb & porb), ~wsfblb, id[7:1], sfb[ 7: 1]);
+latch #(.WIDTH(8)) sfb_ml(clk32, 0, (~resb & porb), ~wsfbmb, id[7:0], sfb[15: 8]);
+latch #(.WIDTH(6)) sfb_hl(clk32, 0, (~resb & porb), ~wsfbhb, id[5:0], sfb[21:16]);
+latch #(.WIDTH(3)) sctl_l(clk32, 0, (~resb & porb), ~wscntlb, id[3:1], snd_ctrl);
+latch #(.WIDTH(1)) sndon_l(clk32, 0, (~resb & porb) | stoff, ~wscntlb, id[0], sndon);
+
+// latch sft register writes
+latch #(.WIDTH(7)) sft_lll(clk32, 0, (~resb & porb), ~wsftlb, id[7:1], sft_l[ 7: 1]);
+latch #(.WIDTH(8)) sft_mll(clk32, 0, (~resb & porb), ~wsftmb, id[7:0], sft_l[15: 8]);
+latch #(.WIDTH(6)) sft_hll(clk32, 0, (~resb & porb), ~wsfthb, id[5:0], sft_l[21:16]);
+// load sft when no sound
+latch #(.WIDTH(21)) sft_ll(clk32, 0, ~porb, ~sframe, sft_l, sft);
+
+wire [7:0] snd_o;
+
+always @(*) begin
+	snd_o = 8'hff;
+	if (~rsfblb)  snd_o = { sfb[7:1], 1'b0 };
+	if (~rsfbmb)  snd_o = sfb[15:8];
+	if (~rsfbhb)  snd_o = { 2'b00, sfb[21:16] };
+	if (~rscntlb) snd_o = { 4'b0000, snd_ctrl, sndon };
+	if (~rsftlb)  snd_o = { sft[7:1], 1'b0 };
+	if (~rsftmb)  snd_o = sft[15:8];
+	if (~rsfthb)  snd_o = { 2'b00, sft[21:16] };
+end
+
 //////// BUS TIMING GENERATOR /////////////////
+
 reg sndack;  // snd cs delayed by 2 8MHz cycles
 always @(posedge clk32, posedge isndcsb) begin
 	reg sndack1;
@@ -323,12 +357,6 @@ clockgen clockgen (
     .latch(LATCH)
 );
 
-reg sndon = 1;
-always @(posedge clk) begin
-    if (stoff) sndon <= 0;
-end;
-//wire sndon = 1;
-wire sfrep = 0;
 wire stoff, sframe;
 wire refb,vidclkb,frame,vidb,viden,sndclk,snden,vos;
 wire cmpcycb, ramcycb;
@@ -453,7 +481,7 @@ vidcnt vidcnt (
     .vid(vid)
 );
 
-wire [21:1] snd, sfb, sft = 21'hf104;
+wire [21:1] snd;
 
 sndcnt sndcnt (
     .porb(porb),

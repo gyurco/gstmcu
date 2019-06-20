@@ -45,6 +45,29 @@ void write_reg(int addr, int data)
 
 }
 
+int read_reg(int addr)
+{
+    int dout;
+
+    tb->AS_N = 0;
+    tb->UDS_N = 0;
+    tb->LDS_N = 0;
+    tb->A = addr >> 1;
+    tb->RW = 1;
+    while (tb->DTACK_N && tb->BERR_N) {
+	tick(0);
+	tick(1);
+    }
+    dout = tb->DOUT;
+    tb->RW=1;
+    tb->AS_N=1;
+    tb->UDS_N=1;
+    tb->LDS_N=1;
+    tick(0);
+    tick(1);
+    return dout;
+}
+
 void dump(bool ntsc, bool mde0, bool mde1) {
 	int steps = 128*2048*8;
 	bool disp;
@@ -111,5 +134,6 @@ int main(int argc, char **argv) {
 	write_reg(0xff0000, 0); //generate bus error
 	dump(true,true,false);
 
+	cout << std::hex << read_reg(0xff820c) << std::endl;
 	trace->close();
 }
