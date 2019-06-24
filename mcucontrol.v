@@ -1,6 +1,7 @@
 /* verilator lint_off UNOPTFLAT */
 
 module mcucontrol (
+    input clk32,
     input porb,
     input resb,
     input clk,
@@ -19,6 +20,7 @@ module mcucontrol (
     input time0,
     input time1,
     input lcycsel,
+    input cycsel_en,
     input ivsync,
     input sreq,
     input sndon,
@@ -99,23 +101,44 @@ end;
 wire sload_n = !porb ? 1 : (clk ? ~(addrselb & time1 & snden) : sload_n); // pl031
 
 ///////////////////// RAM/SHIFTER ////////////////
-reg ramcyc,cmpcyc;
+
 wire cmap = (~irwz | iuds | ilds) & (~vmapb | ~smapb) & idev & ias;
 wire ramsel = (~irwz | ilds | iuds) & ixdmab & ias & iram;
 
+// async implementation from the original schematic
+reg ramcyc_a,cmpcyc_a;
+
 always @(posedge lcycsel, negedge cmap) begin
-    if (!cmap) cmpcyc <= 0;
-    else cmpcyc <= cmap;
+    if (!cmap) cmpcyc_a <= 0;
+    else cmpcyc_a <= cmap;
 end;
 
 always @(posedge lcycsel, negedge ramsel) begin
-    if (!ramsel) ramcyc <= 0;
-    else ramcyc <= ramsel;
+    if (!ramsel) ramcyc_a <= 0;
+    else ramcyc_a <= ramsel;
 end;
 
-wire pl025 = !porb ? 1 : (clk ? !resb | (time1 & addrselb & viden) : pl025);
-assign dcyc_n = ~pl025;
+wire dcyc_a = !porb ? 1 : (clk ? !resb | (time1 & addrselb & viden) : dcyc_a); // pl025
 
+// sync to clk32 implementation
+reg ramcyc,cmpcyc;
+
+always @(posedge clk32, negedge cmap) begin
+    if (!cmap) cmpcyc <= 0;
+    else if(cycsel_en) cmpcyc <= cmap;
+end;
+
+always @(posedge clk32, negedge ramsel) begin
+    if (!ramsel) ramcyc <= 0;
+    else if (cycsel_en) ramcyc <= ramsel;
+end;
+
+wire dcyc;
+latch dcyc_l(clk32, !porb, 0, clk, !resb | (time1 & addrselb & viden), dcyc); // pl025
+
+/////
+
+assign dcyc_n = ~dcyc;
 assign cmpcycb = ~cmpcyc;
 assign ramcycb = ~ramcyc;
 assign we_n = ~(ramcyc & cmpcycb & ~irwz & ~time0 & ~addrselb);

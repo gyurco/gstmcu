@@ -17,7 +17,8 @@ module clockgen (
 	output m2clock,
 	output clk4,
 	output latch,
-	output cycsel
+	output cycsel,
+	output cycsel_en // one clock before cycsel
 );
 
 assign clk     = mhz16_s;
@@ -31,6 +32,7 @@ assign m2clock = ~time6_s;
 assign clk4    = l2_s;
 assign latch   = ~latchb_s;
 assign cycsel  = time7_s;
+assign cycsel_en = time6_s & ~time7_s;
 
 // timing signals according to the original schematics
 

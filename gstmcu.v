@@ -337,7 +337,7 @@ assign DTACK_N = ~(sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | joysel | 
 ////////////////////////////////////////////
 
 wire ixdmab = 1;
-wire clk,time0,time1,time2,addrsel,m2clock,clk4,cycsel;
+wire clk,time0,time1,time2,addrsel,m2clock,clk4,cycsel,cycsel_en;
 wire lcycsel = cycsel;
 wire addrselb = ~addrsel;
 
@@ -358,6 +358,7 @@ clockgen clockgen (
     .addrsel(addrsel),
     .m2clock(m2clock),
     .cycsel(cycsel),
+    .cycsel_en(cycsel_en),
     .latch(LATCH)
 );
 
@@ -366,6 +367,7 @@ wire refb,vidclkb,frame,vidb,viden,sndclk,snden,vos;
 wire cmpcycb, ramcycb;
 
 mcucontrol mcucontrol (
+    .clk32(clk32),
     .porb(porb),
     .resb(resb),
     .clk(clk),
@@ -385,6 +387,7 @@ mcucontrol mcucontrol (
     .sreq(SREQ),
     .sndon(sndon),
     .lcycsel(lcycsel),
+    .cycsel_en(cycsel_en),
     .time0(time0),
     .time1(time1),
     .frame(frame),
