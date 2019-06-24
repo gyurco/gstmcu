@@ -26,46 +26,84 @@ void print(bool rise) {
 
 void write_reg(int addr, int data)
 {
-    tb->AS_N = 0;
-    tb->UDS_N = 0;
-    tb->LDS_N = 0;
-    tb->A = addr >> 1;
-    tb->DIN = data;
-    tb->RW = 0;
-    while (tb->DTACK_N && tb->BERR_N) {
-	tick(0);
+	while (!tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	};
+	// S0
+	tb->A = addr >> 1;
+	while (!tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	};
+	// S2
+	tb->AS_N = 0;
+	tb->DIN = data;
+	tb->RW = 0;
+	while (tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	}
+	//S4
+	tb->UDS_N = 0;
+	tb->LDS_N = 0;
+	while (true) {
+		tick(1);
+		tick(0);
+		if (tb->MHZ8_EN2 && !(tb->DTACK_N && tb->BERR_N)) break;
+	}
+	while (tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	}
+	tb->RW=1;
+	tb->AS_N=1;
+	tb->UDS_N=1;
+	tb->LDS_N=1;
 	tick(1);
-    }
-    tb->RW=1;
-    tb->AS_N=1;
-    tb->UDS_N=1;
-    tb->LDS_N=1;
-    tick(0);
-    tick(1);
-
+	tick(0);
 }
 
 int read_reg(int addr)
 {
-    int dout;
-
-    tb->AS_N = 0;
-    tb->UDS_N = 0;
-    tb->LDS_N = 0;
-    tb->A = addr >> 1;
-    tb->RW = 1;
-    while (tb->DTACK_N && tb->BERR_N) {
-	tick(0);
+	int dout;
+	while (!tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	};
+	// S0
+	tb->A = addr >> 1;
+	while (!tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	};
+	// S2
+	tb->AS_N = 0;
+	tb->RW = 1;
+	while (tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	}
+	//S4
+	tb->UDS_N = 0;
+	tb->LDS_N = 0;
+	while (true) {
+		tick(1);
+		tick(0);
+		if (tb->MHZ8_EN2 && !(tb->DTACK_N && tb->BERR_N)) break;
+	}
+	while (tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	}
+	dout = tb->DOUT;
+	tb->RW=1;
+	tb->AS_N=1;
+	tb->UDS_N=1;
+	tb->LDS_N=1;
 	tick(1);
-    }
-    dout = tb->DOUT;
-    tb->RW=1;
-    tb->AS_N=1;
-    tb->UDS_N=1;
-    tb->LDS_N=1;
-    tick(0);
-    tick(1);
-    return dout;
+	tick(0);
+	return dout;
 }
 
 void dump(bool ntsc, bool mde0, bool mde1) {
@@ -80,10 +118,10 @@ void dump(bool ntsc, bool mde0, bool mde1) {
 
 	disp = false;
 	while(steps--) {
-	    tick(0);
+	    tick(1);
 	    if (tb->hsc == 127) disp = true;
 	    if (disp) print(true);
-	    tick(1);
+	    tick(0);
 	    if (disp) print(false);
 	}
 
@@ -117,11 +155,11 @@ int main(int argc, char **argv) {
 	tb->FC2 = 1;
 	tb->resb = 1;
 	tb->porb = 1;
-	tick(0);
 	tick(1);
+	tick(0);
 	tb->resb = 0;
-	tick(0);
 	tick(1);
+	tick(0);
 	tb->resb = 1;
 	tb->SREQ = 1;
 	write_reg(0xff8200, 0x01); // video base hi
@@ -130,6 +168,7 @@ int main(int argc, char **argv) {
 	dump(false,false,false);
 	write_reg(0xff8800, 0); //write to AY
 	write_reg(0x00ffff, 0xaaaa); //write to RAM
+	write_reg(0xff8264, 0x00aa); //write to hscroll
 	dump(true,false,true);
 	write_reg(0xff0000, 0); //generate bus error
 	dump(true,true,false);

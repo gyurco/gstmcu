@@ -50,6 +50,10 @@ module gstmcu (
     output VSYNC_N,
     output DE,
     output BLANK_N,
+    output RDAT_N,
+    output WE_N,
+    output WDAT_N,
+    output CMPCS_N,
     output DCYC_N,
     input  SREQ,
     output SLOAD_N,
@@ -334,7 +338,7 @@ assign DTACK_N = ~(sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | joysel | 
 
 wire ixdmab = 1;
 wire clk,time0,time1,time2,addrsel,m2clock,clk4,cycsel;
-wire lcycsel = ~cycsel;
+wire lcycsel = cycsel;
 wire addrselb = ~addrsel;
 
 clockgen clockgen (
@@ -381,6 +385,7 @@ mcucontrol mcucontrol (
     .sreq(SREQ),
     .sndon(sndon),
     .lcycsel(lcycsel),
+    .time0(time0),
     .time1(time1),
     .frame(frame),
     .refb(refb),
@@ -397,6 +402,10 @@ mcucontrol mcucontrol (
     .snden(snden),
     .cmpcycb(cmpcycb),
     .ramcycb(ramcycb),
+    .rdat_n(RDAT_N),
+    .we_n(WE_N),
+    .wdat_n(WDAT_N),
+    .cmpcs_n(CMPCS_N),
     .dcyc_n(DCYC_N),
     .sload_n(SLOAD_N),
     .sint(SINT)

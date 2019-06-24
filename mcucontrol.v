@@ -1,3 +1,4 @@
+/* verilator lint_off UNOPTFLAT */
 
 module mcucontrol (
     input porb,
@@ -15,6 +16,7 @@ module mcucontrol (
     input ideb,
     input hde1,
     input addrselb,
+    input time0,
     input time1,
     input lcycsel,
     input ivsync,
@@ -35,34 +37,26 @@ module mcucontrol (
     output snden, // sadsel
     output reg sframe,
     output stoff,
+    output rdat_n,
+    output we_n,
+    output wdat_n,
+    output cmpcs_n,
     output dcyc_n,
     output sload_n,
     output reg sint
 );
 
-reg pk005,pk010,pk016,pk024,pk031,pl001,pl002;
 wire c1 = ~(lcycsel & time1);
+
+//////////// VIDEO CONTROL //////////
+reg pk005,pk010,pk016;
 assign frame = ~pk005;
 assign vidb = pk010;
 assign viden = ~pk010;
 assign vidclkb = ~(~addrselb | pk010);
-assign sndclk = ~(addrselb & snden);
-assign snden = ~pk016 & pk024;
 assign refb = pk016 | pk024;
 assign vos = ~(pk010 & ~snden);
-assign cmpcycb = ~pl002;
-assign ramcycb = ~pl001;
 
-wire cmap = (~irwz | iuds | ilds) & (~vmapb | ~smapb) & idev & ias;
-wire ramsel = (~irwz | ilds | iuds) & ixdmab & ias & iram;
-
-/* verilator lint_off UNOPTFLAT */
-
-wire pl025 = !porb ? 1 : (clk ? !resb | (time1 & addrselb & viden) : pl025);
-assign dcyc_n = ~pl025;
-
-wire pl031 = !porb ? 1 : (clk ? ~(addrselb & time1 & snden) : pl031);
-assign sload_n = pl031;
 
 always @(posedge c1, negedge porb) begin
 	if (!porb) { pk005, pk010, pk016 } <= { 1'b0, 1'b1, 1'b0 };
@@ -70,8 +64,17 @@ always @(posedge c1, negedge porb) begin
 	    pk005 <= ivsync;
 	    pk010 <= ideb;
 	    pk016 <= hde1;
-	    pk031 <= sndon;
 	end
+end
+
+///////// SOUND DMA CONTROL //////
+reg pk024,pk031;
+
+assign sndclk = ~(addrselb & snden);
+assign snden = ~pk016 & pk024;
+
+always @(posedge c1) begin
+    pk031 <= sndon;
 end
 
 wire pk061 = (snd == sft) & ~c1;
@@ -93,14 +96,31 @@ always @(posedge c1, negedge pk031) begin
     else pk024 <= sreq;
 end;
 
+wire sload_n = !porb ? 1 : (clk ? ~(addrselb & time1 & snden) : sload_n); // pl031
+
+///////////////////// RAM/SHIFTER ////////////////
+reg ramcyc,cmpcyc;
+wire cmap = (~irwz | iuds | ilds) & (~vmapb | ~smapb) & idev & ias;
+wire ramsel = (~irwz | ilds | iuds) & ixdmab & ias & iram;
+
 always @(posedge lcycsel, negedge cmap) begin
-    if (!cmap) pl002 <= 0;
-    else pl002 <= cmap;
+    if (!cmap) cmpcyc <= 0;
+    else cmpcyc <= cmap;
 end;
 
 always @(posedge lcycsel, negedge ramsel) begin
-    if (!ramsel) pl001 <= 0;
-    else pl001 <= ramsel;
+    if (!ramsel) ramcyc <= 0;
+    else ramcyc <= ramsel;
 end;
+
+wire pl025 = !porb ? 1 : (clk ? !resb | (time1 & addrselb & viden) : pl025);
+assign dcyc_n = ~pl025;
+
+assign cmpcycb = ~cmpcyc;
+assign ramcycb = ~ramcyc;
+assign we_n = ~(ramcyc & cmpcycb & ~irwz & ~time0 & ~addrselb);
+assign rdat_n = ~((cmpcyc & ramcycb & irwz) | (ramcyc & cmpcycb & irwz));
+assign wdat_n = ~(~we_n | (cmpcyc & ramcycb & ~irwz & ~time1 & ~addrselb));
+assign cmpcs_n =~((cmpcyc & ramcycb & ~irwz & ~time1 & ~addrselb) | (cmpcyc & ramcycb & irwz & lcycsel & ~time1) | ~resb);
 
 endmodule;
