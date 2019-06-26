@@ -59,31 +59,30 @@ end
 
 //////////// VIDEO CONTROL //////////
 assign frame = ~pk005;
-assign vidb = pk010;
-assign viden = ~pk010;
-assign vidclkb = ~(~addrselb | pk010);
+assign viden = ~vidb; // pk010
+assign vidclkb = ~(~addrselb | vidb);
 assign refb = pk016 | pk024;
-assign vos = ~(pk010 & ~snden);
+assign vos = ~(vidb & ~snden);
 
 // async implementation from the original schematic
-reg pk005_a,pk010_a,pk016_a;
+reg pk005_a,vidb_a,pk016_a;
 always @(posedge c1, negedge porb) begin
-	if (!porb) { pk005_a, pk010_a, pk016_a } <= { 1'b0, 1'b1, 1'b0 };
+	if (!porb) { pk005_a, vidb_a, pk016_a } <= { 1'b0, 1'b1, 1'b0 };
 	else begin
-	    pk005_a <= ivsync;
-	    pk010_a <= ideb;
-	    pk016_a <= hde1;
+		pk005_a <= ivsync;
+		vidb_a  <= ideb;
+		pk016_a <= hde1;
 	end
 end
 
 // sync to clk32 implementation
-reg pk005,pk010,pk016;
+reg pk005,pk016;
 always @(posedge clk32, negedge porb) begin
-	if (!porb) { pk005, pk010, pk016 } <= { 1'b0, 1'b1, 1'b0 };
+	if (!porb) { pk005, vidb, pk016 } <= { 1'b0, 1'b1, 1'b0 };
 	else if (c1_en_p) begin
-	    pk005 <= ivsync;
-	    pk010 <= ideb;
-	    pk016 <= hde1;
+		pk005 <= ivsync;
+		vidb  <= ideb;
+		pk016 <= hde1;
 	end
 end
 
