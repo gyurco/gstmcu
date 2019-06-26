@@ -165,6 +165,15 @@ int main(int argc, char **argv) {
 	write_reg(0xff8200, 0x01); // video base hi
 	write_reg(0xff8202, 0xbb); // video base mid
 	write_reg(0xff820c, 0xcc); // video base lo
+
+	write_reg(0xff8902, 0x00); // snd frame start hi
+	write_reg(0xff8904, 0x10); // snd frame start mid
+	write_reg(0xff8906, 0x00); // snd frame start lo
+	write_reg(0xff890e, 0x01); // snd frame end hi
+	write_reg(0xff8910, 0x02); // snd frame end mid
+	write_reg(0xff8912, 0x03); // snd frame end lo
+	write_reg(0xff8900, 0x03); // snd ctrl - start+loop
+
 	dump(false,false,false);
 	write_reg(0xff8800, 0); //write to AY
 	write_reg(0x00ffff, 0xaaaa); //write to RAM

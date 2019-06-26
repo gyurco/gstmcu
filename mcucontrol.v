@@ -48,10 +48,16 @@ module mcucontrol (
     output reg sint
 );
 
-wire c1 = ~(lcycsel & time1);
+wire c1 = ~(lcycsel & time1); // pk033
+wire c1_en_p = lcycsel & time1 & clk;
+wire c1_en_n = ~lcycsel & ~addrselb & clk;
+reg c1_rise, c1_fall;
+always @(posedge clk32) begin
+    c1_rise <= c1_en_p;
+    c1_fall <= c1_en_n;
+end
 
 //////////// VIDEO CONTROL //////////
-reg pk005,pk010,pk016;
 assign frame = ~pk005;
 assign vidb = pk010;
 assign viden = ~pk010;
@@ -59,10 +65,22 @@ assign vidclkb = ~(~addrselb | pk010);
 assign refb = pk016 | pk024;
 assign vos = ~(pk010 & ~snden);
 
-
+// async implementation from the original schematic
+reg pk005_a,pk010_a,pk016_a;
 always @(posedge c1, negedge porb) begin
-	if (!porb) { pk005, pk010, pk016 } <= { 1'b0, 1'b1, 1'b0 };
+	if (!porb) { pk005_a, pk010_a, pk016_a } <= { 1'b0, 1'b1, 1'b0 };
 	else begin
+	    pk005_a <= ivsync;
+	    pk010_a <= ideb;
+	    pk016_a <= hde1;
+	end
+end
+
+// sync to clk32 implementation
+reg pk005,pk010,pk016;
+always @(posedge clk32, negedge porb) begin
+	if (!porb) { pk005, pk010, pk016 } <= { 1'b0, 1'b1, 1'b0 };
+	else if (c1_en_p) begin
 	    pk005 <= ivsync;
 	    pk010 <= ideb;
 	    pk016 <= hde1;
@@ -70,35 +88,62 @@ always @(posedge c1, negedge porb) begin
 end
 
 ///////// SOUND DMA CONTROL //////
-reg pk024,pk031;
 
 assign sndclk = ~(addrselb & snden);
 assign snden = ~pk016 & pk024;
 
-always @(posedge c1) begin
-    pk031 <= sndon;
-end
 
 wire pk061 = (snd == sft) & ~c1;
 wire sintsb = sframe;
 assign stoff = pk061 & ~sfrep;
 
-always @(negedge clk, negedge pk031) begin
-    if (!pk031) sframe <= 0;
-    else sframe <= ~(pk061 & sfrep);
+// async implementation from the original schematic
+reg pk024_a,pk031_a,sint_a,sframe_a;
+
+always @(posedge c1) begin
+    pk031_a <= sndon;
+end
+
+always @(negedge clk, negedge pk031_a) begin
+    if (!pk031_a) sframe_a <= 0;
+    else sframe_a <= ~(pk061 & sfrep);
 end;
 
 always @(negedge c1, negedge sintsb) begin
-    if (!sintsb) sint <= 1;
-    else sint <= 0;
+    if (!sintsb) sint_a <= 1;
+    else sint_a <= 0;
 end;
 
-always @(posedge c1, negedge pk031) begin
+always @(posedge c1, negedge pk031_a) begin
+    if (!pk031_a) pk024_a <= 0;
+    else pk024_a <= sreq;
+end;
+
+wire sload_n_a = !porb ? 1 : (clk ? ~(addrselb & time1 & snden) : sload_n_a); // pl031
+
+// sync to clk32 implementation
+reg pk024, pk031;
+
+always @(posedge clk32) begin
+    if (c1_en_p) pk031 <= sndon;
+end
+
+wire sframe;
+latch sframe_l(clk32, 0, !pk031, !clk, ~(pk061 & sfrep), sframe);
+
+latch sint_l(clk32, !sintsb, 0, c1_fall, 0, sint);
+//always @(posedge clk32, negedge sintsb) begin
+//    if (!sintsb) sint <= 1;
+//    else if (c1_en_n) sint <= 0;
+//end;
+
+//latch pk024_l(clk32, 0, !pk031, c1_rise, sreq, pk024);
+always @(posedge clk32, negedge pk031) begin
     if (!pk031) pk024 <= 0;
-    else pk024 <= sreq;
+    else if (c1_en_p) pk024 <= sreq;
 end;
 
-wire sload_n = !porb ? 1 : (clk ? ~(addrselb & time1 & snden) : sload_n); // pl031
+latch sload_n_l(clk32, !porb, 0, clk, ~(time1 & addrselb & snden), sload_n); // pl031
 
 ///////////////////// RAM/SHIFTER ////////////////
 
