@@ -13,6 +13,7 @@ module clockgen (
 	output time0,
 	output time1,
 	output time2,
+	output time4,
 	output addrsel,
 	output m2clock,
 	output clk4,
@@ -27,6 +28,7 @@ assign mhz4    = mhz4_s;
 assign time0   = time0_s;
 assign time1   = time1_s;
 assign time2   = time2_s;
+assign time4   = time4_s;
 assign addrsel = time5_s;
 assign m2clock = ~time6_s;
 assign clk4    = l2_s;

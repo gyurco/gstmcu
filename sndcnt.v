@@ -1,3 +1,4 @@
+/* verilator lint_off UNOPTFLAT */
 
 module sndcnt (
     input         porb,

@@ -337,7 +337,7 @@ assign DTACK_N = ~(sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | joysel | 
 ////////////////////////////////////////////
 
 wire ixdmab = 1;
-wire clk,time0,time1,time2,addrsel,m2clock,clk4,cycsel,cycsel_en;
+wire clk,time0,time1,time2,time4,addrsel,m2clock,clk4,cycsel,cycsel_en;
 wire lcycsel = cycsel;
 wire addrselb = ~addrsel;
 
@@ -355,6 +355,7 @@ clockgen clockgen (
     .time0(time0),
     .time1(time1),
     .time2(time2),
+    .time4(time4),
     .addrsel(addrsel),
     .m2clock(m2clock),
     .cycsel(cycsel),
@@ -493,7 +494,11 @@ vidcnt vidcnt (
     .vid(vid)
 );
 
-wire [21:1] snd;
+
+//////// DMA SOUND COUNTER ////////
+
+// async
+wire [21:1] snd_a;
 
 sndcnt sndcnt (
     .porb(porb),
@@ -501,8 +506,17 @@ sndcnt sndcnt (
     .sndclk(sndclk),
     .sframe(sframe),
     .sfb(sfb),
-    .snd(snd)
+    .snd(snd_a)
 );
 
-endmodule;
+//sync to clk32
+wire sndclk_en = addrselb & time4 & snden;
+reg [21:1] snd;
 
+always @(posedge clk32) begin
+    if (!(porb & resb)) snd <= 0;
+    else if (!sframe) snd <= sfb; // load is async originally, here delayed by half mhz16. Doh.
+    else if (sndclk_en) snd <= snd + 1'd1;
+end
+
+endmodule;
