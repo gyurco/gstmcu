@@ -442,7 +442,7 @@ hsyncgen hsyncgen (
 // sync to clk32
 wire [6:0] hsc;
 wire [6:0] hsc_load_val = { mde1 | interlace, 2'b00, mde1, 1'b0, ntsc & ~mde1, ~(ntsc & ~mde1) };
-wire       hsc_load;
+wire       hsc_load; // vertclkb
 
 reg        iihsync;
 wire [6:0] ihsync_set = mde1 ? 7'd121 : 7'd101;
@@ -488,7 +488,14 @@ hdegen hdegen (
     .blank_n(BLANK_N)
 );
 
-wire iivsync;
+//////////// VERTICAL SYNC GENERATOR ///////////
+
+
+// async
+wire iivsync_a;
+
+`ifdef VERILATOR
+
 vsyncgen vsyncgen (
     .vertclk(vertclk),
     .resb(resb),
@@ -497,8 +504,36 @@ vsyncgen vsyncgen (
     .mde1b(~mde1),
     .interlace(interlace),
     .ntsc(ntsc),
-    .iivsync(iivsync)
+    .iivsync(iivsync_a)
 );
+`endif
+
+// sync to clk32
+wire       vertclk_en = hsc_load & m2clock_en_p;
+wire [8:0] vsc;
+wire [8:0] vsc_load_val = { 1'b0, ~mde1, ~mde1, ~mde1 & ntsc, ~mde1 & ntsc, 1'b1, mde1, ~mde1 & ntsc, 1'b0 };
+wire       vsc_load;
+
+reg        iivsync;
+wire [8:0] ivsync_set = mde1 ? 9'd510 : 9'd508;
+
+always @(posedge clk32, negedge resb) begin
+	if (!resb) begin
+		vsc <= 0;
+		vsc_load <= 1;
+		iivsync <= 1;
+	end else if (vertclk_en) begin
+		vsc <= vsc + 1'd1;
+		if (vsc == 9'd511 | vsc_load) begin
+			vsc_load <= ~vsc_load;
+			vsc <= vsc_load_val;
+			iivsync <= 1;
+		end
+		if (vsc == ivsync_set) iivsync <= 0;
+	end
+end
+
+///////////// VERTICAL DE GENERATOR ////////////
 
 wire vde, vblank;
 
