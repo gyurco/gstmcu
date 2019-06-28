@@ -479,7 +479,10 @@ vdegen vdegen (
     .vblank(vblank)
 );
 
-wire [21:1] vid;
+//////// VIDEO ADDRESS COUNTER ////
+
+//async
+wire [21:1] vid_a;
 
 vidcnt vidcnt (
     .porb(porb),
@@ -491,9 +494,43 @@ vidcnt vidcnt (
     .wloclb(wloclb),
     .wlocmb(wlocmb),
     .wlochb(wlochb),
-    .vid(vid)
+    .vid(vid_a)
 );
 
+//sync to clk32
+reg  [21:1] vid_reg;
+wire [21:1] vid;
+reg vid_r_d, vidclk_d, vidb_d;
+
+reg pf071_reg;
+wire pf071;
+
+wire vid_r = pf071 & vidb;
+wire vid_xll = !(!wloclb | !frame);
+wire vid_xlm = !(!wlocmb | !frame);
+wire vid_xlh = !(!wlochb | !frame);
+wire vid_rr = ~(!porb | !frame | !wlochb | !wlocmb | !wloclb);
+
+always @(*) begin
+	vid = vid_reg;
+	if (~vid_r_d & vid_r) vid = vid + {13 'd0, hoff };
+	else if (~vidclk_d & ~vidclkb) vid = vid_reg + 1'd1;
+	if (!vid_xll) vid[ 7: 1] = vld[ 7: 1];
+	if (!vid_xlm) vid[15: 8] = vld[15: 8];
+	if (!vid_xlh) vid[21:16] = vld[21:16];
+
+	pf071 = pf071_reg;
+	if (!vid_rr) pf071 = 0;
+	else if (~vidb_d & vidb) pf071 = 1;
+end
+
+always @(posedge clk32) begin
+	vid_r_d <= vid_r;
+	vidclk_d <= ~vidclkb;
+	vid_reg <= vid;
+	vidb_d <= vidb;
+	pf071_reg <= pf071;
+end
 
 //////// DMA SOUND COUNTER ////////
 
