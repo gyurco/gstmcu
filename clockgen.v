@@ -16,25 +16,29 @@ module clockgen (
 	output time4,
 	output addrsel,
 	output m2clock,
+	output m2clock_en_p,
+	output m2clock_en_n,
 	output clk4,
 	output latch,
 	output cycsel,
 	output cycsel_en // one clock before cycsel
 );
 
-assign clk     = mhz16_s;
-assign mhz8    = mhz8_s;
-assign mhz4    = mhz4_s;
-assign time0   = time0_s;
-assign time1   = time1_s;
-assign time2   = time2_s;
-assign time4   = time4_s;
-assign addrsel = time5_s;
-assign m2clock = ~time6_s;
-assign clk4    = l2_s;
-assign latch   = ~latchb_s;
-assign cycsel  = time7_s;
-assign cycsel_en = time6_s & ~time7_s;
+assign clk          = mhz16_s;
+assign mhz8         = mhz8_s;
+assign mhz4         = mhz4_s;
+assign time0        = time0_s;
+assign time1        = time1_s;
+assign time2        = time2_s;
+assign time4        = time4_s;
+assign addrsel      = time5_s;
+assign m2clock      = ~time6_s;
+assign m2clock_en_p = ~time5_s &  time6_s;
+assign m2clock_en_n =  time5_s & ~time6_s;
+assign clk4         = l2_s;
+assign latch        = ~latchb_s;
+assign cycsel       = time7_s;
+assign cycsel_en    = time6_s & ~time7_s;
 
 `ifdef VERILATOR
 

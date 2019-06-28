@@ -8,11 +8,10 @@ module hsyncgen (
     input interlace,
     input ntsc,
     output reg iihsync,
-    output vertclk,
-    output [6:0] hsc
+    output vertclk
 );
 
-//wire [6:0] hsc;
+wire [6:0] hsc;
 wire [6:0] hscb;
 wire       resbl = ~(~resb | ~porb);
 wire       co1,co2,co3,co4,co5;

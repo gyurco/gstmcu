@@ -6,6 +6,7 @@
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 
+
 static Vgstmcu *tb;
 static VerilatedVcdC *trace;
 static int tickcount;
@@ -18,7 +19,7 @@ void tick(int c) {
 
 void print(bool rise) {
     std::cout << (rise ? "rise" : "fall");
-    std::cout << "- hsc : " << std::setw(3) << (int)tb->hsc;
+//    std::cout << "- hsc : " << std::setw(3) << (int)tb->hsc;
     std::cout << " hsync " << bool(tb->HSYNC_N);
     std::cout << " vsync " << bool(tb->VSYNC_N);
     std::cout << std::endl;
@@ -119,7 +120,7 @@ void dump(bool ntsc, bool mde0, bool mde1) {
 	disp = false;
 	while(steps--) {
 	    tick(1);
-	    if (tb->hsc == 127) disp = true;
+//	    if (tb->hsc == 127) disp = true;
 	    if (disp) print(true);
 	    tick(0);
 	    if (disp) print(false);

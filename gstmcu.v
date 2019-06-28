@@ -58,8 +58,7 @@ module gstmcu (
     input  SREQ,
     output SLOAD_N,
     output SINT,
-    output [23:1] ADDR,
-    output [6:0] hsc
+    output [23:1] ADDR
 );
 
 ///////// ADDRESS BUS MUX ////////
@@ -337,7 +336,7 @@ assign DTACK_N = ~(sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | joysel | 
 ////////////////////////////////////////////
 
 wire ixdmab = 1;
-wire clk,time0,time1,time2,time4,addrsel,m2clock,clk4,cycsel,cycsel_en;
+wire clk,time0,time1,time2,time4,addrsel,m2clock,m2clock_en_p,m2clock_en_n,clk4,cycsel,cycsel_en;
 wire lcycsel = cycsel;
 wire addrselb = ~addrsel;
 
@@ -358,6 +357,8 @@ clockgen clockgen (
     .time4(time4),
     .addrsel(addrsel),
     .m2clock(m2clock),
+    .m2clock_en_p(m2clock_en_p),
+    .m2clock_en_n(m2clock_en_n),
     .cycsel(cycsel),
     .cycsel_en(cycsel_en),
     .latch(LATCH)
@@ -415,10 +416,15 @@ mcucontrol mcucontrol (
     .sint(SINT)
 );
 
-wire iihsync, iivsync;
+/////// HORIZONTAL SYNC GENERATOR ////////
+
 wire ihsync = ~iihsync;
 wire ivsync = ~iivsync;
 wire vertclk;
+
+// async
+`ifdef VERILATOR
+wire iihsync_a;
 
 hsyncgen hsyncgen (
     .m2clock(m2clock),
@@ -428,10 +434,37 @@ hsyncgen hsyncgen (
     .mde1b(~mde1),
     .interlace(interlace),
     .ntsc(ntsc),
-    .iihsync(iihsync),
-    .vertclk(vertclk),
-    .hsc(hsc)
+    .iihsync(iihsync_a),
+    .vertclk(vertclk)
 );
+`endif
+
+// sync to clk32
+wire [6:0] hsc;
+wire [6:0] hsc_load_val = { mde1 | interlace, 2'b00, mde1, 1'b0, ntsc & ~mde1, ~(ntsc & ~mde1) };
+wire       hsc_load;
+
+reg        iihsync;
+wire [6:0] ihsync_set = mde1 ? 7'd121 : 7'd101;
+wire [6:0] ihsync_res = mde1 ? 7'd127 : 7'd111;
+
+always @(posedge clk32, negedge resb) begin
+	if (!resb) begin
+		hsc <= 0;
+		hsc_load <= 0;
+		iihsync <= 1;
+	end else if (m2clock_en_p) begin
+		hsc <= hsc + 1'd1;
+		if (hsc == 7'd127 | hsc_load) begin
+			hsc_load <= ~hsc_load;
+			hsc <= hsc_load_val;
+		end
+		if (hsc == ihsync_set) iihsync <= 0;
+		if (hsc == ihsync_res) iihsync <= 1;
+	end
+end
+
+///////// HORIZONTAL DE GENERATOR ///////
 
 wire cpal, cntsc, hde1;
 wire ideb = ~DE;
@@ -455,6 +488,7 @@ hdegen hdegen (
     .blank_n(BLANK_N)
 );
 
+wire iivsync;
 vsyncgen vsyncgen (
     .vertclk(vertclk),
     .resb(resb),
