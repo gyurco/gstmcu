@@ -36,6 +36,8 @@ assign latch   = ~latchb_s;
 assign cycsel  = time7_s;
 assign cycsel_en = time6_s & ~time7_s;
 
+`ifdef VERILATOR
+
 // timing signals according to the original schematics
 
 wire mhz8_a = !porb ? 0 : (clk ? l1 : mhz8_a);
@@ -66,6 +68,7 @@ always @(negedge clk, negedge resb) begin
 	end
 end
 
+`endif
 
 // timing signals synchronous to clk32
 // output waveforms are identical to the original

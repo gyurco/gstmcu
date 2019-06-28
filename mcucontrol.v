@@ -64,6 +64,8 @@ assign vidclkb = ~(~addrselb | vidb);
 assign refb = pk016 | pk024;
 assign vos = ~(vidb & ~snden);
 
+`ifdef VERILATOR
+
 // async implementation from the original schematic
 reg pk005_a,vidb_a,pk016_a;
 always @(posedge c1, negedge porb) begin
@@ -74,6 +76,8 @@ always @(posedge c1, negedge porb) begin
 		pk016_a <= hde1;
 	end
 end
+
+`endif
 
 // sync to clk32 implementation
 reg pk005,pk016;
@@ -95,6 +99,8 @@ assign snden = ~pk016 & pk024;
 wire pk061 = (snd == sft) & ~c1;
 wire sintsb = sframe;
 assign stoff = pk061 & ~sfrep;
+
+`ifdef VERILATOR
 
 // async implementation from the original schematic
 reg pk024_a,pk031_a,sint_a,sframe_a;
@@ -119,6 +125,8 @@ always @(posedge c1, negedge pk031_a) begin
 end;
 
 wire sload_n_a = !porb ? 1 : (clk ? ~(addrselb & time1 & snden) : sload_n_a); // pl031
+
+`endif
 
 // sync to clk32 implementation
 reg pk024, pk031;
@@ -149,6 +157,8 @@ latch sload_n_l(clk32, !porb, 0, clk, ~(time1 & addrselb & snden), sload_n); // 
 wire cmap = (~irwz | iuds | ilds) & (~vmapb | ~smapb) & idev & ias;
 wire ramsel = (~irwz | ilds | iuds) & ixdmab & ias & iram;
 
+`ifdef VERILATOR
+
 // async implementation from the original schematic
 reg ramcyc_a,cmpcyc_a;
 
@@ -163,6 +173,8 @@ always @(posedge lcycsel, negedge ramsel) begin
 end;
 
 wire dcyc_a = !porb ? 1 : (clk ? !resb | (time1 & addrselb & viden) : dcyc_a); // pl025
+
+`endif
 
 // sync to clk32 implementation
 reg ramcyc,cmpcyc;

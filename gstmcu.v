@@ -482,6 +482,9 @@ vdegen vdegen (
 //////// VIDEO ADDRESS COUNTER ////
 
 //async
+
+`ifdef VERILATOR
+
 wire [21:1] vid_a;
 
 vidcnt vidcnt (
@@ -496,6 +499,8 @@ vidcnt vidcnt (
     .wlochb(wlochb),
     .vid(vid_a)
 );
+
+`endif
 
 //sync to clk32
 reg  [21:1] vid_reg;
@@ -535,6 +540,9 @@ end
 //////// DMA SOUND COUNTER ////////
 
 // async
+
+`ifdef VERILATOR
+
 wire [21:1] snd_a;
 
 sndcnt sndcnt (
@@ -545,6 +553,8 @@ sndcnt sndcnt (
     .sfb(sfb),
     .snd(snd_a)
 );
+
+`endif
 
 //sync to clk32
 wire sndclk_en = addrselb & time4 & snden;
