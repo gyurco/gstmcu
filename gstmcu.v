@@ -496,7 +496,6 @@ hdegen hdegen (
 
 // sync to clk32
 reg  [7:0] hdec;
-wire       ihsyncb = porb & iihsync;
 reg        hblank;
 wire       hblank_set = (cntsc & hdec == 8'd8 ) |  (cpal & hdec == 8'd9);
 wire       hblank_reset = mde1 | hdec == 8'd114;
@@ -506,8 +505,8 @@ wire       hde_set   = (cntsc & hdec == 8'd11) | (cpal & hdec == 8'd12) | (mde1 
 wire       hde_reset = (cntsc & hdec == 8'd93) | (cpal & hdec == 8'd96) | (mde1 & hdec == 8'd43);
 reg        hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4, hde_set_r5, hde_reset_r;
 
-always @(posedge clk32, negedge ihsyncb) begin
-	if (!ihsyncb) begin
+always @(posedge clk32, negedge porb) begin
+	if (!porb) begin
 		hdec <= 0;
 		hblank <= 0;
 
@@ -515,6 +514,15 @@ always @(posedge clk32, negedge ihsyncb) begin
 		hde_reset_r <= 1;
 		hde <= 0;
 	end else begin
+		if ((m2clock_en_p && hsc == ihsync_set) || ~iihsync) begin
+			// sync equivalent of ~iihsync async reset
+			hdec <= 0;
+			hblank <= 0;
+
+			{ hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4, hde_set_r5 } <= 0;
+			hde_reset_r <= 1;
+			hde <= 0;
+		end else
 		if (m2clock_en_n) begin
 			hdec <= hdec + 1'd1;
 
