@@ -39,11 +39,11 @@ wire       w3xx = vdecb[8] &  vdec[7] &  vdec[6];
 wire       w4xx =  vdec[8] & vdecb[7] & vdecb[6];
 wire       w6xx =  vdec[8] &  vdec[7] & vdecb[6];
 
-wire       vblank_set =   (cpal & w0xx & wx3x & wxx0) | (cntsc & w0xx & wx1x & wxx7);
-wire       vblank_reset = mde1 | (cpal & w4xx & wx6x & wxx3) | (cntsc & w4xx & wx0x & wxx1);
+wire       vblank_set =   (cpal & w0xx & wx3x & wxx0) | (cntsc & w0xx & wx1x & wxx7);        // 0030 = 24, 0017 = 15
+wire       vblank_reset = mde1 | (cpal & w4xx & wx6x & wxx3) | (cntsc & w4xx & wx0x & wxx1); // 0463 = 307, 0401 = 257
 
-wire       vde_set =      (mde1 & w0xx & wx4x & wxx3) | (cpal & w0xx & wx7x & wxx6) | (cntsc & w0xx & wx4x & wxx1);
-wire       vde_reset =    (mde1 & w6xx & wx6x & wxx3) | (cpal & w4xx & wx0x & wxx6) | (cntsc & w3xx & wx5x & wxx1);
+wire       vde_set =      (mde1 & w0xx & wx4x & wxx3) | (cpal & w0xx & wx7x & wxx6) | (cntsc & w0xx & wx4x & wxx1); // 0043 = 35, 0076 = 62, 0041 = 33
+wire       vde_reset =    (mde1 & w6xx & wx6x & wxx3) | (cpal & w4xx & wx0x & wxx6) | (cntsc & w3xx & wx5x & wxx1); // 0663 = 435, 0406 = 262, 0351 = 233
 
 
 always @(posedge clk, negedge xr) begin

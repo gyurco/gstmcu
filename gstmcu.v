@@ -592,6 +592,10 @@ end
 ///////////// VERTICAL DE GENERATOR ////////////
 
 wire vde, vblank;
+//async
+`ifdef VERILATOR
+
+wire vde_a, vblank_a;
 
 vdegen vdegen (
     .porb(porb),
@@ -600,9 +604,52 @@ vdegen vdegen (
     .cntsc(cntsc),
     .ihsync(ihsync),
     .ivsync(ivsync),
-    .vde(vde),
-    .vblank(vblank)
+    .vde(vde_a),
+    .vblank(vblank_a)
 );
+
+`endif
+
+// sync to clk32
+wire [8:0] vdec;
+reg  [8:0] vdec_reg;
+
+reg        vde_reg, vblank_reg;
+
+wire       vblank_set =   (cpal & vdec == 9'd24) | (cntsc & vdec == 9'd15);        // 0030 = 24, 0017 = 15
+wire       vblank_reset = mde1 | (cpal & vdec == 9'd307) | (cntsc & vdec == 9'd257); // 0463 = 307, 0401 = 257
+
+wire       vde_set =      (mde1 & vdec == 9'd35 ) | (cpal & vdec == 9'd62 ) | (cntsc & vdec == 9'd33 ); // 0043 = 35, 0076 = 62, 0041 = 33
+wire       vde_reset =    (mde1 & vdec == 9'd435) | (cpal & vdec == 9'd262) | (cntsc & vdec == 9'd233); // 0663 = 435, 0406 = 262, 0351 = 233
+
+reg        iihsync_d;
+
+always @(*) begin
+	vdec = vdec_reg;
+	vde  = vde_reg;
+	vblank = vblank_reg;
+	if (!(porb & ~ivsync)) begin
+		vdec = 0;
+		vde = 0;
+		vblank = 0;
+	end
+	else if (iihsync & ~iihsync_d) begin
+		vdec = vdec + 1'd1;
+	end
+end
+
+always @(posedge clk32) begin
+	iihsync_d <= iihsync;
+	vdec_reg <= vdec;
+	vde_reg <= vde;
+	vblank_reg <= vblank;
+	if (m2clock_en_p && hsc == ihsync_res) begin
+		if (vde_set)   vde_reg <= 1;
+		if (vde_reset) vde_reg <= 0;
+		if (vblank_set) vblank_reg <= 1;
+		if (vblank_reset) vblank_reg <= 0;
+	end
+end
 
 //////// VIDEO ADDRESS COUNTER ////
 
