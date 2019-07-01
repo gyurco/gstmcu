@@ -1,3 +1,30 @@
+// ====================================================================
+//
+//  Atari STE GSTMCU
+//  Based on ST4081S.PDF recovered by Christian Zietz
+//
+//  Copyright (C) 2019 Gyorgy Szombathelyi <gyurco@freemail.hu>
+//
+//  This program is free software; you can redistribute it and/or modify it
+//  under the terms of the GNU General Public License as published by the Free
+//  Software Foundation; either version 2 of the License, or (at your option)
+//  any later version.
+//
+//  This program is distributed in the hope that it will be useful, but WITHOUT
+//  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+//  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+//  more details.
+//
+//  You should have received a copy of the GNU General Public License along
+//  with this program; if not, write to the Free Software Foundation, Inc.,
+//  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
+//============================================================================
+
+// TODO:
+// - pen, joystick, paddle registers
+// - DMA
+// - less useful: RAS/CAS generation, refresh generation
 
 module gstmcu (
     input clk32,
@@ -13,7 +40,8 @@ module gstmcu (
     input  LDS_N,
     input  VMA_N,
     input  MFPINT_N,
-    input  [23:1] A,
+    input  [23:1] A,    // from CPU
+    output [23:1] ADDR, // to RAM
     input  [15:0] DIN,
     output [15:0] DOUT,
     output MHZ8,
@@ -58,7 +86,6 @@ module gstmcu (
     input  SREQ,
     output SLOAD_N,
     output SINT,
-    output [23:1] ADDR
 );
 
 ///////// ADDRESS BUS MUX ////////
