@@ -11,8 +11,8 @@ module hdegen (
     input vblank,
     input vde,
     input noscroll,
-    output cpal,
-    output cntsc,
+    input cpal,
+    input cntsc,
     output hde1,
     output blank_n,
     output de
@@ -28,15 +28,13 @@ reg        hdec0;
 assign     hdec[0] = hdec0;
 assign     hdecb[0] = ~hdec0;
 wire       vdd = 1;
-assign     cpal = mde1b & ~ntsc;
-assign     cntsc = mde1b & ntsc;
 reg        hblank;
 
-wire       hblank_set = (cntsc & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] & hdec[3] & hdecb[2] & hdecb[1] & hdecb[0]) |
-                        (cpal  & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] & hdec[3] & hdecb[2] & hdecb[1] &  hdec[0]);
+wire       hblank_set = (cntsc & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] & hdec[3] & hdecb[2] & hdecb[1] & hdecb[0]) | // 00001000 = 8
+                        (cpal  & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] & hdec[3] & hdecb[2] & hdecb[1] &  hdec[0]);  // 00001001 = 9
 wire       hblank_reset = mde1 |
-                        (cntsc & hdecb[7] & hdec[6] & hdec[5] & hdec[4] & hdecb[3] & hdecb[2] & hdec[1] & hdecb[0]) |
-                        (cpal  & hdecb[7] & hdec[6] & hdec[5] & hdec[4] & hdecb[3] & hdecb[2] & hdec[1] & hdecb[0]);
+                        (cntsc & hdecb[7] & hdec[6] & hdec[5] & hdec[4] & hdecb[3] & hdecb[2] & hdec[1] & hdecb[0]) |    // 01110010 = 114
+                        (cpal  & hdecb[7] & hdec[6] & hdec[5] & hdec[4] & hdecb[3] & hdecb[2] & hdec[1] & hdecb[0]);     // 01110010 = 114
 
 always @(posedge m2clockb, negedge ihsyncb) begin
 	if (!ihsyncb) hblank <= 0;
@@ -47,12 +45,12 @@ always @(posedge m2clockb, negedge ihsyncb) begin
 end
 
 reg        hde;
-wire       hde_set   = (cntsc & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] &  hdec[3] & hdecb[2] &  hdec[1] &  hdec[0]) |
-                       (cpal  & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] &  hdec[3] &  hdec[2] & hdecb[1] & hdecb[0]) |
-                       (mde1  & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] & hdecb[3] & hdecb[2] &  hdec[1] & hdecb[0]);
-wire       hde_reset = (cntsc & hdecb[7] &  hdec[6] & hdecb[5] &  hdec[4] &  hdec[3] &  hdec[2] &  hdec[1] &  hdec[0]) |
-                       (cpal  & hdecb[7] &  hdec[6] &  hdec[5] & hdecb[4] & hdecb[3] & hdecb[2] & hdecb[1] & hdecb[0]) |
-                       (mde1  & hdecb[7] & hdecb[6] &  hdec[5] & hdecb[4] &  hdec[3] & hdecb[2] &  hdec[1] &  hdec[0]);
+wire       hde_set   = (cntsc & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] &  hdec[3] & hdecb[2] &  hdec[1] &  hdec[0]) | // 00001011 = 11
+                       (cpal  & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] &  hdec[3] &  hdec[2] & hdecb[1] & hdecb[0]) | // 00001100 = 12
+                       (mde1  & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] & hdecb[3] & hdecb[2] &  hdec[1] & hdecb[0]);  // 00000010 = 2
+wire       hde_reset = (cntsc & hdecb[7] &  hdec[6] & hdecb[5] &  hdec[4] &  hdec[3] &  hdec[2] &  hdec[1] &  hdec[0]) | // 01011101 = 93
+                       (cpal  & hdecb[7] &  hdec[6] &  hdec[5] & hdecb[4] & hdecb[3] & hdecb[2] & hdecb[1] & hdecb[0]) | // 01100000 = 96
+                       (mde1  & hdecb[7] & hdecb[6] &  hdec[5] & hdecb[4] &  hdec[3] & hdecb[2] &  hdec[1] &  hdec[0]);  // 00101011 = 43
 
 reg        hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4, hde_set_r5, hde_reset_r;
 

@@ -48,8 +48,8 @@ module gstmcu (
     output LATCH,
     output HSYNC_N,
     output VSYNC_N,
-    output DE,
-    output BLANK_N,
+    output reg DE,
+    output reg BLANK_N,
     output RDAT_N,
     output WE_N,
     output WDAT_N,
@@ -466,8 +466,13 @@ end
 
 ///////// HORIZONTAL DE GENERATOR ///////
 
-wire cpal, cntsc, hde1;
 wire ideb = ~DE;
+wire cpal = ~mde1 & ~ntsc;
+wire cntsc = ~mde1 & ntsc;
+// async
+`ifdef VERILATOR
+
+wire hde1_a, de_a, blank_n_a;
 
 hdegen hdegen (
     .m2clock(m2clock),
@@ -480,16 +485,67 @@ hdegen hdegen (
     .cpal(cpal),
     .cntsc(cntsc),
     .noscroll(noscroll),
-    .ihsync(ihsync),
-    .hde1(hde1),
+    .ihsync(~iihsync_a),
+    .hde1(hde1_a),
     .vde(vde),
     .vblank(vblank),
-    .de(DE),
-    .blank_n(BLANK_N)
+    .de(de_a),
+    .blank_n(blank_n_a)
 );
+`endif
+
+// sync to clk32
+reg  [7:0] hdec;
+wire       ihsyncb = porb & iihsync;
+reg        hblank;
+wire       hblank_set = (cntsc & hdec == 8'd8 ) |  (cpal & hdec == 8'd9);
+wire       hblank_reset = mde1 | hdec == 8'd114;
+
+reg        hde, hde1;
+wire       hde_set   = (cntsc & hdec == 8'd11) | (cpal & hdec == 8'd12) | (mde1 & hdec == 8'd2);
+wire       hde_reset = (cntsc & hdec == 8'd93) | (cpal & hdec == 8'd96) | (mde1 & hdec == 8'd43);
+reg        hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4, hde_set_r5, hde_reset_r;
+
+always @(posedge clk32, negedge ihsyncb) begin
+	if (!ihsyncb) begin
+		hdec <= 0;
+		hblank <= 0;
+
+		{ hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4, hde_set_r5 } <= 0;
+		hde_reset_r <= 1;
+		hde <= 0;
+	end else begin
+		if (m2clock_en_n) begin
+			hdec <= hdec + 1'd1;
+
+			if (hblank_set) hblank <= 1;
+			if (hblank_reset) hblank <= 0;
+
+			hde_set_r1 <= hde_set;
+			hde_set_r2 <= hde_set_r1;
+			hde_set_r3 <= hde_set_r2;
+			hde_set_r4 <= hde_set_r3;
+			hde_reset_r <= hde_reset;
+			if (hde_reset) hde <= 0;
+			else if ( noscroll && ((~mde1 & hde_set_r4) || (mde1 && hde_set_r1))) hde <= 1;
+			else if (!noscroll && ((~mde0 & hde_set) || (mde0 && hde_set_r2))) hde <= 1;
+		end
+	end
+end
+
+always @(posedge clk32, negedge porb) begin
+	if (!porb) begin
+		BLANK_N <= 1;
+		hde1 <= 0;
+		DE <= 1;
+	end else if (m2clock_en_p) begin
+		BLANK_N <= hblank & vblank;
+		hde1 <= hde;
+		DE <= hde & vde;
+	end
+end
 
 //////////// VERTICAL SYNC GENERATOR ///////////
-
 
 // async
 wire iivsync_a;
