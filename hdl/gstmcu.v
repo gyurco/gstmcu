@@ -85,7 +85,7 @@ module gstmcu (
     output DCYC_N,
     input  SREQ,
     output SLOAD_N,
-    output SINT,
+    output SINT
 );
 
 ///////// ADDRESS BUS MUX ////////

@@ -2,19 +2,40 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
-#include "Vgstmcu.h"
+#include "Vste_tb.h"
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 
 
-static Vgstmcu *tb;
+static Vste_tb *tb;
 static VerilatedVcdC *trace;
 static int tickcount;
 
+static char ram[4*1024*1024];
+
+void initram() {
+
+	FILE *file=fopen("stram.bin", "rb");
+	fread(&ram, 4*1024, 1024, file);
+	fclose(file);
+
+
 void tick(int c) {
+	static int old_addr = 0xffffff;
+
 	tb->clk32 = c;
 	tb->eval();
 	trace->dump(tickcount++);
+
+	if (c && old_addr != tb->ram_a && tb->ram_a < 0x200000) {
+		if (!tb->we_n) {
+			ram[tb->ram_a<<1] = tb->mdout>>8 & 0xff;
+			ram[tb->ram_a<<1 + 1] = tb->mdout & 0xff;
+		}
+		tb->mdin = (ram[tb->ram_a<<1] * 256) + ram[tb->ram_a<<1 + 1];
+//		std::cout << "ram access at " << std::hex << tb->ram_a << " value " << tb->mdin << endl;
+		old_addr = tb->ram_a;
+	}
 }
 
 void print(bool rise) {
@@ -130,6 +151,7 @@ void dump(bool ntsc, bool mde0, bool mde1) {
 
 int main(int argc, char **argv) {
 
+	initram();
 	char steps = 250;
 	// Initialize Verilators variables
 	Verilated::commandArgs(argc, argv);
@@ -139,7 +161,7 @@ int main(int argc, char **argv) {
 	tickcount = 0;
 
 	// Create an instance of our module under test
-	tb = new Vgstmcu;
+	tb = new Vste_tb;
 	tb->trace(trace, 99);
 	trace->open("gstmcu.vcd");
 
@@ -162,7 +184,6 @@ int main(int argc, char **argv) {
 	tick(1);
 	tick(0);
 	tb->resb = 1;
-	tb->SREQ = 1;
 	write_reg(0xff8200, 0x01); // video base hi
 	write_reg(0xff8202, 0xbb); // video base mid
 	write_reg(0xff820c, 0xcc); // video base lo
