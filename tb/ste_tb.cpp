@@ -30,11 +30,11 @@ void tick(int c) {
 	if (c && !(tb->RAS0_N && tb->RAS1_N) && tb->ram_a < 0x200000) {
 		if (!tb->we_n) {
 			ram[tb->ram_a<<1] = (tb->mdout & 0xff00) >> 8;
-			ram[tb->ram_a<<1 + 1] = tb->mdout & 0xff;
+			ram[(tb->ram_a<<1) + 1] = tb->mdout & 0xff;
 			std::cout << "ram write at " << std::hex << tb->ram_a << " value " << tb->mdout << std::endl;
 		}
 		tb->mdin = (ram[tb->ram_a<<1] * 256) + ram[(tb->ram_a<<1) + 1];
-//		std::cout << "ram access at " << std::hex << tb->ram_a << " value " << tb->mdin << endl;
+		//if (!tb->AS_N) std::cout << "ram access at " << std::hex << tb->ram_a << " value " << tb->mdin << std::endl;
 		old_addr = tb->ram_a;
 	}
 }
