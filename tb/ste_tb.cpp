@@ -31,7 +31,7 @@ void tick(int c) {
 		if (!tb->we_n) {
 			ram[tb->ram_a<<1] = (tb->mdout & 0xff00) >> 8;
 			ram[tb->ram_a<<1 + 1] = tb->mdout & 0xff;
-			std::cout << "ram write at " << std::hex << tb->ram_a << " value " << tb->mdout << endl;
+			std::cout << "ram write at " << std::hex << tb->ram_a << " value " << tb->mdout << std::endl;
 		}
 		tb->mdin = (ram[tb->ram_a<<1] * 256) + ram[(tb->ram_a<<1) + 1];
 //		std::cout << "ram access at " << std::hex << tb->ram_a << " value " << tb->mdin << endl;
@@ -191,7 +191,7 @@ void dump(bool ntsc, bool mde0, bool mde1, bool vid) {
 		if (!tb->VSYNC_N && vsync) {
 			vidout = !vidout && once;
 			if (!vidout) once = false;
-			cout << "vsync start, vidout : " << vidout << std::endl;
+			std::cout << "vsync start, vidout : " << vidout << std::endl;
 		}
 	    vsync = tb->VSYNC_N;
 	    tick(1);
@@ -278,19 +278,19 @@ int main(int argc, char **argv) {
 
 	dump(false,true,false,true);
 
-	cout << std::hex << "ram 0x0ffff (0xaaaa): " << std::hex << read_reg(0xffff) << std::endl;
-	cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
+	std::cout << std::hex << "ram 0x0ffff (0xaaaa): " << std::hex << read_reg(0xffff) << std::endl;
+	std::cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
 
 	write_reg(0xff8800, 0); //write to AY
 //	write_reg(0xff8264, 0x00aa); //write to hscroll
 
 //	write_reg(0xff820e, 0x0010); // horizontal offset
 	dump(true,false,true,false);
-	cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
+	std::cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
 	write_reg(0xff0000, 0); //generate bus error
 	dump(true,false,false,false);
-	cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
+	std::cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
 
-	cout << std::hex << read_reg(0xff820c) << std::endl;
+	std::cout << std::hex << read_reg(0xff820c) << std::endl;
 	trace->close();
 }
