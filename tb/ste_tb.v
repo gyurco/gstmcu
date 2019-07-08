@@ -79,7 +79,6 @@ module ste_tb (
     output [3:0] B,
 
     output [23:1] ram_a,
-    output ram_n,
     output we_n,
     output [15:0] mdout,
     input  [15:0] mdin
@@ -128,7 +127,7 @@ gstmcu gstmcu (
     .ROM5_N(ROM5_N),
     .ROM6_N(ROM6_N),
     .ROMP_N(ROMP_N),
-    .RAM_N(ram_n),
+    .RAM_N(RAM_N),
     .RAS0_N(RAS0_N),
     .RAS1_N(RAS1_N),
     .VPA_N(VPA_N),

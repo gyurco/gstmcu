@@ -276,6 +276,8 @@ int main(int argc, char **argv) {
 	write_reg(0xff825c, 0x03f3);
 	write_reg(0xff825e, 0x0ff3);
 
+//	write_reg(0xff820e, 0x0050); // horizontal offset
+
 	dump(false,true,false,true);
 
 	std::cout << std::hex << "ram 0x0ffff (0xaaaa): " << std::hex << read_reg(0xffff) << std::endl;
@@ -284,7 +286,6 @@ int main(int argc, char **argv) {
 	write_reg(0xff8800, 0); //write to AY
 //	write_reg(0xff8264, 0x00aa); //write to hscroll
 
-//	write_reg(0xff820e, 0x0010); // horizontal offset
 	dump(true,false,true,false);
 	std::cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
 	write_reg(0xff0000, 0); //generate bus error
