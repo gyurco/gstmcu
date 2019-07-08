@@ -58,6 +58,8 @@ module ste_tb (
     output ROM6_N,
     output ROMP_N,
     output RAM_N,
+    output RAS0_N,
+    output RAS1_N,
     output VPA_N,
     output MFPCS_N,
     output SNDIR,
@@ -83,8 +85,11 @@ module ste_tb (
     input  [15:0] mdin
 );
 
-// shifter
+// shifter signals
 wire        cmpcs_n, latch, de, blank_n, rdat_n, wdat_n, dcyc_n, sreq, sload_n;
+
+assign      DOUT = rdat_n ? mcu_dout : shifter_dout;
+wire [15:0] mcu_dout;
 
 gstmcu gstmcu (
     .clk32(clk32),
@@ -103,7 +108,7 @@ gstmcu gstmcu (
     .A(A),    // from CPU
     .ADDR(ram_a), // to RAM
     .DIN(DIN),
-    .DOUT(DOUT),
+    .DOUT(mcu_dout),
     .MHZ8(MHZ8),
     .MHZ8_EN1(MHZ8_EN1),
     .MHZ8_EN2(MHZ8_EN2),
@@ -124,6 +129,8 @@ gstmcu gstmcu (
     .ROM6_N(ROM6_N),
     .ROMP_N(ROMP_N),
     .RAM_N(ram_n),
+    .RAS0_N(RAS0_N),
+    .RAS1_N(RAS1_N),
     .VPA_N(VPA_N),
     .MFPCS_N(MFPCS_N),
     .SNDIR(SNDIR),
@@ -148,6 +155,8 @@ gstmcu gstmcu (
     .SINT(SINT)
 );
 
+wire [15:0] shifter_dout;
+
 gstshifter gstshifter (
     .clk32(clk32),
     .ste(1),
@@ -157,7 +166,7 @@ gstshifter gstshifter (
     .CS(~cmpcs_n),
     .A(A[6:1]),
     .DIN(DIN),
-    .DOUT(),
+    .DOUT(shifter_dout),
     .LATCH(latch),
     .RDAT_N(rdat_n),   // latched MDIN -> DOUT
     .WDAT_N(wdat_n),   // DIN  -> MDOUT

@@ -11,14 +11,13 @@ static Vste_tb *tb;
 static VerilatedVcdC *trace;
 static int tickcount;
 
-static char ram[4*1024*1024];
+static unsigned char ram[4*1024*1024];
 
 void initram() {
-
 	FILE *file=fopen("stram.bin", "rb");
 	fread(&ram, 4*1024, 1024, file);
 	fclose(file);
-
+}
 
 void tick(int c) {
 	static int old_addr = 0xffffff;
@@ -27,10 +26,12 @@ void tick(int c) {
 	tb->eval();
 	trace->dump(tickcount++);
 
-	if (c && old_addr != tb->ram_a && tb->ram_a < 0x200000) {
+//	if (c && (old_addr != tb->ram_a || !tb->we_n) && tb->ram_a < 0x200000) {
+	if (c && !(tb->RAS0_N && tb->RAS1_N) && tb->ram_a < 0x200000) {
 		if (!tb->we_n) {
-			ram[tb->ram_a<<1] = tb->mdout>>8 & 0xff;
+			ram[tb->ram_a<<1] = (tb->mdout & 0xff00) >> 8;
 			ram[tb->ram_a<<1 + 1] = tb->mdout & 0xff;
+			std::cout << "ram write at " << std::hex << tb->ram_a << " value " << tb->mdout << endl;
 		}
 		tb->mdin = (ram[tb->ram_a<<1] * 256) + ram[tb->ram_a<<1 + 1];
 //		std::cout << "ram access at " << std::hex << tb->ram_a << " value " << tb->mdin << endl;
@@ -48,33 +49,58 @@ void print(bool rise) {
 
 void write_reg(int addr, int data)
 {
-	while (!tb->MHZ8_EN1) {
-		tick(1);
-		tick(0);
-	};
 	// S0
-	tb->A = addr >> 1;
 	while (!tb->MHZ8_EN1) {
 		tick(1);
 		tick(0);
 	};
-	// S2
-	tb->AS_N = 0;
-	tb->DIN = data;
-	tb->RW = 0;
-	while (tb->MHZ8_EN1) {
+	tb->RW = 1;
+
+	// S1
+	while (!tb->MHZ8_EN2) {
 		tick(1);
 		tick(0);
-	}
-	//S4
+	};
+	tb->A = addr >> 1;
+
+	// S2
+	while (!tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	};
+	tb->AS_N = 0;
+	tb->RW = 0;
+
+	// S3
+	while (!tb->MHZ8_EN2) {
+		tick(1);
+		tick(0);
+	};
+	tb->DIN = data;
+
+	// S4
+	while (!tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	};
 	tb->UDS_N = 0;
 	tb->LDS_N = 0;
+
+	// S5
 	while (true) {
 		tick(1);
 		tick(0);
 		if (tb->MHZ8_EN2 && !(tb->DTACK_N && tb->BERR_N)) break;
 	}
-	while (tb->MHZ8_EN1) {
+
+	// S6
+	while (!tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	}
+
+	// S7
+	while (!tb->MHZ8_EN2) {
 		tick(1);
 		tick(0);
 	}
@@ -89,37 +115,52 @@ void write_reg(int addr, int data)
 int read_reg(int addr)
 {
 	int dout;
-	while (!tb->MHZ8_EN1) {
-		tick(1);
-		tick(0);
-	};
 	// S0
-	tb->A = addr >> 1;
 	while (!tb->MHZ8_EN1) {
 		tick(1);
 		tick(0);
 	};
-	// S2
-	tb->AS_N = 0;
 	tb->RW = 1;
-	while (tb->MHZ8_EN1) {
+
+	// S1
+	while (!tb->MHZ8_EN2) {
+		tick(1);
+		tick(0);
+	};
+	tb->A = addr >> 1;
+
+	// S2
+	while (!tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	};
+	tb->AS_N = 0;
+	tb->UDS_N = 0;
+	tb->LDS_N = 0;
+	// S3
+	while (!tb->MHZ8_EN2) {
 		tick(1);
 		tick(0);
 	}
-	//S4
-	tb->UDS_N = 0;
-	tb->LDS_N = 0;
+	// S4 - S5
 	while (true) {
 		tick(1);
 		tick(0);
 		if (tb->MHZ8_EN2 && !(tb->DTACK_N && tb->BERR_N)) break;
 	}
-	while (tb->MHZ8_EN1) {
+
+	// S6
+	while (!tb->MHZ8_EN1) {
+		tick(1);
+		tick(0);
+	}
+
+	//S7
+	while (!tb->MHZ8_EN2) {
 		tick(1);
 		tick(0);
 	}
 	dout = tb->DOUT;
-	tb->RW=1;
 	tb->AS_N=1;
 	tb->UDS_N=1;
 	tb->LDS_N=1;
@@ -184,6 +225,7 @@ int main(int argc, char **argv) {
 	tick(1);
 	tick(0);
 	tb->resb = 1;
+	write_reg(0xff8000, 0x000c); // memory conrol reg
 	write_reg(0xff8200, 0x01); // video base hi
 	write_reg(0xff8202, 0xbb); // video base mid
 	write_reg(0xff820c, 0xcc); // video base lo
@@ -196,15 +238,23 @@ int main(int argc, char **argv) {
 	write_reg(0xff8912, 0x03); // snd frame end lo
 	write_reg(0xff8900, 0x03); // snd ctrl - start+loop
 
+	write_reg(0x00ffff, 0xaaaa); // write to RAM
+
+
 	dump(false,false,false);
+
+	cout << std::hex << "ram 0x0ffff (0xaaaa): " << std::hex << read_reg(0xffff) << std::endl;
+	cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
+
 	write_reg(0xff8800, 0); //write to AY
-	write_reg(0x00ffff, 0xaaaa); //write to RAM
 	write_reg(0xff8264, 0x00aa); //write to hscroll
 
 	write_reg(0xff820e, 0x0010); // horizontal offset
 	dump(true,false,true);
+	cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
 	write_reg(0xff0000, 0); //generate bus error
 	dump(true,true,false);
+	cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
 
 	cout << std::hex << read_reg(0xff820c) << std::endl;
 	trace->close();

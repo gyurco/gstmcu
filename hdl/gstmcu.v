@@ -64,6 +64,8 @@ module gstmcu (
     output ROM6_N,
     output ROMP_N,
     output RAM_N,
+    output RAS0_N,
+    output RAS1_N,
     output VPA_N,
     output MFPCS_N,
     output SNDIR,
@@ -301,6 +303,8 @@ latch #(.WIDTH(8)) vld_ml(clk32, 0, ~(resb & porb), ~wvidbmb, id[7:0], vld[15: 8
 latch #(.WIDTH(6)) vld_hl(clk32, 0, ~(resb & porb), ~wvidbhb, id[5:0], vld[21:16]);
 wire [3:0] conf_reg;
 latch #(.WIDTH(4)) conf_l(clk32, 0, ~(resb & porb), ~wconfigb, id[3:0], conf_reg[3:0]);
+wire rs2b = ~conf_reg[2];
+wire rs3b = ~conf_reg[3];
 
 wire [7:0] vid_o;
 
@@ -360,6 +364,21 @@ end
 
 assign DTACK_N = ~(sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | joysel | cartsel | syncsel);
 
+///////// DRAM SIZE/CONFIGURATION DECODES ////////
+
+wire sela = rs2b & rs3b;
+wire [3:0] ramaaa = sela ? { ADDR[21] & ADDR[20], ADDR[19], ADDR[18], ADDR[17] } : { 1'b1, ADDR[21], ADDR[20], ADDR[19] };
+wire ram1 = rs3b ? &ramaaa : ADDR[21];
+wire ram2 = rs3b ? ramaaa[3] & ramaaa[2] & ramaaa[1] & ~ramaaa[0] : ~ADDR[21];
+
+//////////////// RAS GENERATOR ///////////////////
+
+wire ram1a, ram2a;
+latch ram1a_l(clk32, 0, !porb, clk4, ram1, ram1a);
+latch ram2a_l(clk32, 0, !porb, clk4, ram2, ram2a);
+
+assign RAS0_N = ~( (time0 & addrselb & (~refb | (ram1a & vos))) | (~time0 & addrsel & ram1a & ~ramcycb) );
+assign RAS1_N = ~( (time0 & addrselb & (~refb | (ram2a & vos))) | (~time0 & addrsel & ram2a & ~ramcycb) );
 ////////////////////////////////////////////
 
 wire ixdmab = 1;
