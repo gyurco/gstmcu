@@ -208,37 +208,42 @@ wire   pclk_en = low?t==2'b10:mid?~t[0]:1'b1;
 // use variable dot clock
 
 reg [3:0] hcnt;
+reg       hcnt_en;
 always @(posedge clk32) begin
 	if (!resb) begin
 		hcnt <= 0;
-	end else if (pclk_en) begin
-		if (!DE) hcnt <= 0;
-		else hcnt <= hcnt  + 1'd1;
+		hcnt_en <= 0;
+	end else begin
+		if (!DE) hcnt_en <= 0;
+		if (DE & !LOAD_N) hcnt_en <= 1;
+		if (pclk_en) begin
+			if (hcnt_en) hcnt <= hcnt  + 1'd1;
 
-		// drive video output
-		R <= BLANK_N?4'b0000:stvid_r;
-		G <= BLANK_N?4'b0000:stvid_g;
-		B <= BLANK_N?4'b0000:stvid_b;
+			// drive video output
+			R <= BLANK_N?stvid_r:4'b0000;
+			G <= BLANK_N?stvid_g:4'b0000;
+			B <= BLANK_N?stvid_b:4'b0000;
 
-		// shift all planes and reload 
-		// shift registers every 16 pixels
-		if(hcnt == 4'hf) begin
-			if(!ste || (pixel_offset == 0)) begin
-				shift_0 <= data_latch[0];
-				shift_1 <= data_latch[1];
-				shift_2 <= data_latch[2];
-				shift_3 <= data_latch[3];
+			// shift all planes and reload 
+			// shift registers every 16 pixels
+			if(hcnt == 4'hf) begin
+				if(!ste || (pixel_offset == 0)) begin
+					shift_0 <= data_latch[0];
+					shift_1 <= data_latch[1];
+					shift_2 <= data_latch[2];
+					shift_3 <= data_latch[3];
+				end else begin
+					shift_0 <= ste_shifted_0;
+					shift_1 <= ste_shifted_1;
+					shift_2 <= ste_shifted_2;
+					shift_3 <= ste_shifted_3;
+				end
 			end else begin
-				shift_0 <= ste_shifted_0;
-				shift_1 <= ste_shifted_1;
-				shift_2 <= ste_shifted_2;
-				shift_3 <= ste_shifted_3;
+				shift_0 <= { shift_0[14:0], 1'b0 };
+				shift_1 <= { shift_1[14:0], 1'b0 };
+				shift_2 <= { shift_2[14:0], 1'b0 };
+				shift_3 <= { shift_3[14:0], 1'b0 };
 			end
-		end else begin
-			shift_0 <= { shift_0[14:0], 1'b0 };
-			shift_1 <= { shift_1[14:0], 1'b0 };
-			shift_2 <= { shift_2[14:0], 1'b0 };
-			shift_3 <= { shift_3[14:0], 1'b0 };
 		end
 	end
 end

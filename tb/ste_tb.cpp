@@ -33,7 +33,7 @@ void tick(int c) {
 			ram[tb->ram_a<<1 + 1] = tb->mdout & 0xff;
 			std::cout << "ram write at " << std::hex << tb->ram_a << " value " << tb->mdout << endl;
 		}
-		tb->mdin = (ram[tb->ram_a<<1] * 256) + ram[tb->ram_a<<1 + 1];
+		tb->mdin = (ram[tb->ram_a<<1] * 256) + ram[(tb->ram_a<<1) + 1];
 //		std::cout << "ram access at " << std::hex << tb->ram_a << " value " << tb->mdin << endl;
 		old_addr = tb->ram_a;
 	}
@@ -169,9 +169,14 @@ int read_reg(int addr)
 	return dout;
 }
 
-void dump(bool ntsc, bool mde0, bool mde1) {
+void dump(bool ntsc, bool mde0, bool mde1, bool vid) {
 	int steps = 128*2048*8;
 	bool disp;
+	bool vidout = false;
+	bool once = vid;
+	int vsync = 0;
+	unsigned short rgb;
+	FILE *file;
 
 	write_reg(0xff820a, ntsc ? 0 : 0x200);
 	write_reg(0xff8260, (mde1 ? 0x200 : 0) | (mde0 ? 0x100 : 0));
@@ -179,14 +184,27 @@ void dump(bool ntsc, bool mde0, bool mde1) {
 	std::cout << "NTSC : " << ntsc << " mde0 : " << mde0 << " mde1: " << mde1 << std::endl;
 	std::cout << "=========================" << std::endl;
 
+	if (vid) file=fopen("video.rgb", "wb");
+
 	disp = false;
 	while(steps--) {
+		if (!tb->VSYNC_N && vsync) {
+			vidout = !vidout && once;
+			if (!vidout) once = false;
+			cout << "vsync start, vidout : " << vidout << std::endl;
+		}
+	    vsync = tb->VSYNC_N;
 	    tick(1);
 //	    if (tb->hsc == 127) disp = true;
 	    if (disp) print(true);
 	    tick(0);
 	    if (disp) print(false);
+	    if (vid && vidout) {
+		rgb = tb->R*256 + tb->G*16 + tb->B;
+		fwrite(&rgb, 1, sizeof(rgb), file);
+	    }
 	}
+	if (vid) fclose(file);
 
 }
 
@@ -225,10 +243,10 @@ int main(int argc, char **argv) {
 	tick(1);
 	tick(0);
 	tb->resb = 1;
-	write_reg(0xff8000, 0x000c); // memory conrol reg
-	write_reg(0xff8200, 0x01); // video base hi
-	write_reg(0xff8202, 0xbb); // video base mid
-	write_reg(0xff820c, 0xcc); // video base lo
+	write_reg(0xff8000, 0x0c); // memory conrol reg
+	write_reg(0xff8200, 0x1f); // video base hi
+	write_reg(0xff8202, 0x80); // video base mid
+	write_reg(0xff820c, 0x00); // video base lo
 
 	write_reg(0xff8902, 0x00); // snd frame start hi
 	write_reg(0xff8904, 0x10); // snd frame start mid
@@ -240,20 +258,37 @@ int main(int argc, char **argv) {
 
 	write_reg(0x00ffff, 0xaaaa); // write to RAM
 
+	write_reg(0xff8240, 0x0fff); //palette registers
+	write_reg(0xff8242, 0x0f00);
+	write_reg(0xff8244, 0x00f0);
+	write_reg(0xff8246, 0x0000);
+	write_reg(0xff8248, 0x0fff);
+	write_reg(0xff824a, 0x0f00);
+	write_reg(0xff824c, 0x00f0);
+	write_reg(0xff824e, 0x0ff0);
 
-	dump(false,false,false);
+	write_reg(0xff8250, 0x000f); //palette registers
+	write_reg(0xff8252, 0x0f0f);
+	write_reg(0xff8254, 0x00ff);
+	write_reg(0xff8256, 0x0555);
+	write_reg(0xff8258, 0x0333);
+	write_reg(0xff825a, 0x0f33);
+	write_reg(0xff825c, 0x03f3);
+	write_reg(0xff825e, 0x0ff3);
+
+	dump(false,true,false,true);
 
 	cout << std::hex << "ram 0x0ffff (0xaaaa): " << std::hex << read_reg(0xffff) << std::endl;
 	cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
 
 	write_reg(0xff8800, 0); //write to AY
-	write_reg(0xff8264, 0x00aa); //write to hscroll
+//	write_reg(0xff8264, 0x00aa); //write to hscroll
 
-	write_reg(0xff820e, 0x0010); // horizontal offset
-	dump(true,false,true);
+//	write_reg(0xff820e, 0x0010); // horizontal offset
+	dump(true,false,true,false);
 	cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
 	write_reg(0xff0000, 0); //generate bus error
-	dump(true,true,false);
+	dump(true,false,false,false);
 	cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
 
 	cout << std::hex << read_reg(0xff820c) << std::endl;
