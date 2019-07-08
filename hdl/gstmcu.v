@@ -22,9 +22,9 @@
 //============================================================================
 
 // TODO:
-// - pen, joystick, paddle registers
 // - DMA
-// - less useful: RAS/CAS generation, refresh generation
+// - pen, joystick, paddle registers
+// - less useful: CAS generation, refresh address generation
 
 module gstmcu (
     input clk32,
