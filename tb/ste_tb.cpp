@@ -248,11 +248,13 @@ int main(int argc, char **argv) {
 	write_reg(0xff8202, 0x80); // video base mid
 	write_reg(0xff820c, 0x00); // video base lo
 
+	write_reg(0xff8921, 0x83); // stereo/50kHz
+
 	write_reg(0xff8902, 0x00); // snd frame start hi
 	write_reg(0xff8904, 0x10); // snd frame start mid
 	write_reg(0xff8906, 0x00); // snd frame start lo
-	write_reg(0xff890e, 0x01); // snd frame end hi
-	write_reg(0xff8910, 0x02); // snd frame end mid
+	write_reg(0xff890e, 0x00); // snd frame end hi
+	write_reg(0xff8910, 0x14); // snd frame end mid
 	write_reg(0xff8912, 0x03); // snd frame end lo
 	write_reg(0xff8900, 0x03); // snd ctrl - start+loop
 
