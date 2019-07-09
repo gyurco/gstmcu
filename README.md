@@ -8,6 +8,7 @@ The code contains both the identical gate-level circuits with asynchronous clock
 # Testbench
 
 The tb/ directory contains a testbench, which runs the circuits to generate waveforms for several frames. Also an rgb file is created using a RAM dump.
+It requires Verilator for running the tests and generate the .vcd file, and ffmpeg to convert the .rgb output to .png.
 To run the test:
 
 ```
@@ -28,3 +29,6 @@ To see a generated video frame:
 ```
 make video
 ```
+
+With the included RAM dump, the generated screen should look like:
+![video.png](video.png)
