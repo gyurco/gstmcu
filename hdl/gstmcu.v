@@ -163,7 +163,7 @@ wire system = ifc2z | A[15:11] == 0;
 wire irama = |A[21:16];
 wire iramb = fcx & ~A[23] & ~A[22];
 wire iramaa = irama & iramb; // 01xxxxx - 3fxxxxx
-wire iramc = overlap | fcx | system;
+wire iramc = overlap & fcx & system;
 wire iramab = A[23:16] == 0 & iramc;
 wire iram = iramaa | iramab | ~ixdmab | ~resb;
 assign RAM_N = ~iram;

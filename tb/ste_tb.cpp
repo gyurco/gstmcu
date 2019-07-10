@@ -27,7 +27,7 @@ void tick(int c) {
 	trace->dump(tickcount++);
 
 //	if (c && (old_addr != tb->ram_a || !tb->we_n) && tb->ram_a < 0x200000) {
-	if (c && !(tb->RAS0_N && tb->RAS1_N) && tb->ram_a < 0x200000) {
+	if (c && !(tb->RAS0_N && tb->RAS1_N && tb->ROM2_N) && tb->ram_a < 0x200000) {
 		if (!tb->we_n) {
 			ram[tb->ram_a<<1] = (tb->mdout & 0xff00) >> 8;
 			ram[(tb->ram_a<<1) + 1] = tb->mdout & 0xff;
@@ -294,6 +294,11 @@ int main(int argc, char **argv) {
 	dump(true,false,false,false);
 	std::cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
 
-	std::cout << std::hex << read_reg(0xff820c) << std::endl;
+//	std::cout << std::hex << read_reg(0xff820c) << std::endl;
+
+	std::cout << std::hex << "ROM READ 0-2" << std::endl;
+	std::cout << std::hex << read_reg(0x000000) << std::endl;
+	std::cout << std::hex << read_reg(0x000002) << std::endl;
+
 	trace->close();
 }
