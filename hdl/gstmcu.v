@@ -291,6 +291,10 @@ wire ntsc = ~pal;
 wire drw;
 register drw_r(clk32, ~(resb & porb), 0, dmadirb, id[8], drw);
 
+wire penr = iuds & ilds & irwz & pensel;
+wire padr = ilds & irwz & padsel;
+wire butr = ilds & irwz & butsel;
+
 reg [9:8] idout_h;
 always @(*) begin
 	idout_h = 2'b11;
@@ -376,7 +380,7 @@ always @(posedge clk32, posedge isndcsb) begin
 	end
 end
 
-assign DTACK_N = ~(sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | joysel | cartsel | syncsel);
+assign DTACK_N = ~(sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | cartsel | syncsel | butr | joysel | padr | penr);
 
 ///////// DRAM SIZE/CONFIGURATION DECODES ////////
 
