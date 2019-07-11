@@ -61,7 +61,7 @@ end
 assign frame = ~pk005;
 assign viden = ~vidb; // pk010
 assign vidclkb = ~(~addrselb | vidb);
-assign refb = pk016 & pk024;
+assign refb = pk016 | pk024;
 assign vos = ~(vidb & ~snden);
 
 `ifdef VERILATOR
