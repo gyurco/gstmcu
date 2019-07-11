@@ -24,7 +24,7 @@
 // TODO:
 // - DMA
 // - pen, joystick, paddle registers
-// - less useful: CAS generation, refresh address generation
+// - less useful: refresh address generation
 
 module gstmcu (
     input clk32,
@@ -66,6 +66,12 @@ module gstmcu (
     output RAM_N,
     output RAS0_N,
     output RAS1_N,
+    output CAS0L_N,
+    output CAS0H_N,
+    output CAS1L_N,
+    output CAS1H_N,
+    output RAM_LDS, // RAM byte selects
+    output RAM_UDS, // CAS signals come a bit late for a fast SDRAM controller
     output VPA_N,
     output MFPCS_N,
     output SNDIR,
@@ -382,11 +388,25 @@ wire ram2 = rs3b ? ramaaa[3] & ramaaa[2] & ramaaa[1] & ~ramaaa[0] : ~ADDR[21];
 //////////////// RAS GENERATOR ///////////////////
 
 wire ram1a, ram2a;
+wire udsl, ldsl;
+
 mlatch ram1a_l(clk32, 0, !porb, clk4, ram1, ram1a);
 mlatch ram2a_l(clk32, 0, !porb, clk4, ram2, ram2a);
+mlatch ldsl_l (clk32, 0, !porb, clk4, ilds, ldsl);
+mlatch udsl_l (clk32, 0, !porb, clk4, iuds, udsl);
 
 assign RAS0_N = ~( (time0 & addrselb & (~refb | (ram1a & vos))) | (~time0 & addrsel & ram1a & ~ramcycb) );
 assign RAS1_N = ~( (time0 & addrselb & (~refb | (ram2a & vos))) | (~time0 & addrsel & ram2a & ~ramcycb) );
+
+assign CAS0L_N = ~( (time2 & ~lcycsel & ram1a & vos) | (~time2 & lcycsel & ram1a & ~ramcycb & ldsl) );
+assign CAS0H_N = ~( (time2 & ~lcycsel & ram1a & vos) | (~time2 & lcycsel & ram1a & ~ramcycb & udsl) );
+assign CAS1L_N = ~( (time2 & ~lcycsel & ram2a & vos) | (~time2 & lcycsel & ram2a & ~ramcycb & ldsl) );
+assign CAS1H_N = ~( (time2 & ~lcycsel & ram2a & vos) | (~time2 & lcycsel & ram2a & ~ramcycb & udsl) );
+
+// not original signals
+assign RAM_LDS = (time0 & addrselb & (ram1a | ram2a) & vos) | (~time0 & addrsel & (ram1a | ram2a) & ~ramcycb & ldsl);
+assign RAM_UDS = (time0 & addrselb & (ram1a | ram2a) & vos) | (~time0 & addrsel & (ram1a | ram2a) & ~ramcycb & udsl);
+
 ////////////////////////////////////////////
 
 wire ixdmab = 1;
