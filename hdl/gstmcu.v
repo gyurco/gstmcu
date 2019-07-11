@@ -41,7 +41,7 @@ module gstmcu (
     input  VMA_N,
     input  MFPINT_N,
     input  [23:1] A,    // from CPU
-    output [23:1] ADDR, // to RAM
+    output reg [23:1] ADDR, // to RAM
     input  [15:0] DIN,
     output [15:0] DOUT,
     output MHZ8,
@@ -274,7 +274,7 @@ end
 wire gamecart;
 register gamecart_r(clk32, 0, ~(resb & porb), irwb & cartsel & iuds, id[8], gamecart);
 wire noscroll;
-latch noscroll_l(clk32, ~(resb & porb), 0, scrlsel, ~|id[3:0], noscroll);
+mlatch noscroll_l(clk32, ~(resb & porb), 0, scrlsel, ~|id[3:0], noscroll);
 wire mde1;
 register mde1_r(clk32, 0, ~(resb & porb), ~(irwb & mdesel & iuds), id[9], mde1);
 wire mde0;
@@ -285,7 +285,7 @@ wire ntsc = ~pal;
 wire drw;
 register drw_r(clk32, ~(resb & porb), 0, dmadirb, id[8], drw);
 
-wire [9:8] idout_h;
+reg [9:8] idout_h;
 always @(*) begin
 	idout_h = 2'b11;
 	if (cartsel & irwz & iuds) idout_h = { 1'b0, gamecart };
@@ -296,17 +296,17 @@ end
 ////////////// VIDEO REGISTERS ////////////////
 
 wire [7:0] hoff;
-latch #(.WIDTH(8)) hoff_l(clk32, 0, ~(resb & porb), ~whoffb, id[7:0], hoff);
+mlatch #(.WIDTH(8)) hoff_l(clk32, 0, ~(resb & porb), ~whoffb, id[7:0], hoff);
 wire [21:1] vld;
-latch #(.WIDTH(7)) vld_ll(clk32, 0, ~(resb & porb), ~wvidblb, id[7:1], vld[ 7: 1]);
-latch #(.WIDTH(8)) vld_ml(clk32, 0, ~(resb & porb), ~wvidbmb, id[7:0], vld[15: 8]);
-latch #(.WIDTH(6)) vld_hl(clk32, 0, ~(resb & porb), ~wvidbhb, id[5:0], vld[21:16]);
+mlatch #(.WIDTH(7)) vld_ll(clk32, 0, ~(resb & porb), ~wvidblb, id[7:1], vld[ 7: 1]);
+mlatch #(.WIDTH(8)) vld_ml(clk32, 0, ~(resb & porb), ~wvidbmb, id[7:0], vld[15: 8]);
+mlatch #(.WIDTH(6)) vld_hl(clk32, 0, ~(resb & porb), ~wvidbhb, id[5:0], vld[21:16]);
 wire [3:0] conf_reg;
-latch #(.WIDTH(4)) conf_l(clk32, 0, ~(resb & porb), ~wconfigb, id[3:0], conf_reg[3:0]);
+mlatch #(.WIDTH(4)) conf_l(clk32, 0, ~(resb & porb), ~wconfigb, id[3:0], conf_reg[3:0]);
 wire rs2b = ~conf_reg[2];
 wire rs3b = ~conf_reg[3];
 
-wire [7:0] vid_o;
+reg [7:0] vid_o;
 
 always @(*) begin
 	vid_o = 8'hff;
@@ -324,20 +324,20 @@ wire  [3:1] snd_ctrl;
 wire sndon;
 wire sfrep = snd_ctrl[1];
 
-latch #(.WIDTH(7)) sfb_ll(clk32, 0, (~resb & porb), ~wsfblb, id[7:1], sfb[ 7: 1]);
-latch #(.WIDTH(8)) sfb_ml(clk32, 0, (~resb & porb), ~wsfbmb, id[7:0], sfb[15: 8]);
-latch #(.WIDTH(6)) sfb_hl(clk32, 0, (~resb & porb), ~wsfbhb, id[5:0], sfb[21:16]);
-latch #(.WIDTH(3)) sctl_l(clk32, 0, (~resb & porb), ~wscntlb, id[3:1], snd_ctrl);
-latch #(.WIDTH(1)) sndon_l(clk32, 0, (~resb & porb) | stoff, ~wscntlb, id[0], sndon);
+mlatch #(.WIDTH(7)) sfb_ll(clk32, 0, (~resb & porb), ~wsfblb, id[7:1], sfb[ 7: 1]);
+mlatch #(.WIDTH(8)) sfb_ml(clk32, 0, (~resb & porb), ~wsfbmb, id[7:0], sfb[15: 8]);
+mlatch #(.WIDTH(6)) sfb_hl(clk32, 0, (~resb & porb), ~wsfbhb, id[5:0], sfb[21:16]);
+mlatch #(.WIDTH(3)) sctl_l(clk32, 0, (~resb & porb), ~wscntlb, id[3:1], snd_ctrl);
+mlatch #(.WIDTH(1)) sndon_l(clk32, 0, (~resb & porb) | stoff, ~wscntlb, id[0], sndon);
 
 // latch sft register writes
-latch #(.WIDTH(7)) sft_lll(clk32, 0, (~resb & porb), ~wsftlb, id[7:1], sft_l[ 7: 1]);
-latch #(.WIDTH(8)) sft_mll(clk32, 0, (~resb & porb), ~wsftmb, id[7:0], sft_l[15: 8]);
-latch #(.WIDTH(6)) sft_hll(clk32, 0, (~resb & porb), ~wsfthb, id[5:0], sft_l[21:16]);
+mlatch #(.WIDTH(7)) sft_lll(clk32, 0, (~resb & porb), ~wsftlb, id[7:1], sft_l[ 7: 1]);
+mlatch #(.WIDTH(8)) sft_mll(clk32, 0, (~resb & porb), ~wsftmb, id[7:0], sft_l[15: 8]);
+mlatch #(.WIDTH(6)) sft_hll(clk32, 0, (~resb & porb), ~wsfthb, id[5:0], sft_l[21:16]);
 // load sft when no sound
-latch #(.WIDTH(21)) sft_ll(clk32, 0, ~porb, ~sframe, sft_l, sft);
+mlatch #(.WIDTH(21)) sft_ll(clk32, 0, ~porb, ~sframe, sft_l, sft);
 
-wire [7:0] snd_o;
+reg [7:0] snd_o;
 
 always @(*) begin
 	snd_o = 8'hff;
@@ -374,8 +374,8 @@ wire ram2 = rs3b ? ramaaa[3] & ramaaa[2] & ramaaa[1] & ~ramaaa[0] : ~ADDR[21];
 //////////////// RAS GENERATOR ///////////////////
 
 wire ram1a, ram2a;
-latch ram1a_l(clk32, 0, !porb, clk4, ram1, ram1a);
-latch ram2a_l(clk32, 0, !porb, clk4, ram2, ram2a);
+mlatch ram1a_l(clk32, 0, !porb, clk4, ram1, ram1a);
+mlatch ram2a_l(clk32, 0, !porb, clk4, ram2, ram2a);
 
 assign RAS0_N = ~( (time0 & addrselb & (~refb | (ram1a & vos))) | (~time0 & addrsel & ram1a & ~ramcycb) );
 assign RAS1_N = ~( (time0 & addrselb & (~refb | (ram2a & vos))) | (~time0 & addrsel & ram2a & ~ramcycb) );
@@ -486,9 +486,9 @@ hsyncgen hsyncgen (
 `endif
 
 // sync to clk32
-wire [6:0] hsc;
+reg  [6:0] hsc;
 wire [6:0] hsc_load_val = { mde1 | interlace, 2'b00, mde1, 1'b0, ntsc & ~mde1, ~(ntsc & ~mde1) };
-wire       hsc_load; // vertclkb
+reg        hsc_load; // vertclkb
 
 reg        iihsync;
 wire [6:0] ihsync_set = mde1 ? 7'd121 : 7'd101;
@@ -620,9 +620,9 @@ vsyncgen vsyncgen (
 
 // sync to clk32
 wire       vertclk_en = hsc_load & m2clock_en_p;
-wire [8:0] vsc;
+reg  [8:0] vsc;
 wire [8:0] vsc_load_val = { 1'b0, ~mde1, ~mde1, ~mde1 & ntsc, ~mde1 & ntsc, 1'b1, mde1, ~mde1 & ntsc, 1'b0 };
-wire       vsc_load;
+reg        vsc_load;
 
 reg        iivsync;
 wire [8:0] ivsync_set = mde1 ? 9'd510 : 9'd508;
@@ -719,12 +719,10 @@ vidcnt vidcnt (
 `endif
 
 //sync to clk32
-reg  [21:1] vid_reg;
-wire [21:1] vid;
+reg  [21:1] vid, vid_reg;
 reg vid_r_d, vidclk_d, vidb_d;
 
-reg pf071_reg;
-wire pf071;
+reg pf071, pf071_reg;
 
 wire vid_r = pf071 & vidb;
 wire vid_xll = !(!wloclb | !frame);
@@ -782,4 +780,4 @@ always @(posedge clk32) begin
     else if (sndclk_en) snd <= snd + 1'd1;
 end
 
-endmodule;
+endmodule

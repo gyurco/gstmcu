@@ -6,7 +6,7 @@ module register (
     input r,    // reset
     input c,    // write clock
     input d,    // new value
-    output q    // value
+    output reg q    // value
 );
 
 reg val_reg;

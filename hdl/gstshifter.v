@@ -40,9 +40,9 @@ module gstshifter (
 	input  LOAD_N,       // DCYC_N
 	input  DE,
 	input  BLANK_N,
-	output [3:0] R,
-	output [3:0] G,
-	output [3:0] B,
+	output reg [3:0] R,
+	output reg [3:0] G,
+	output reg [3:0] B,
 	// DMA SOUND
 	input  SLOAD_N,
 	output SREQ,
@@ -55,11 +55,11 @@ module gstshifter (
 // ---------------------------------------------------------------------------
 
 wire [15:0] mbus_in = CS ? s_dout : MDIN;
-wire [15:0] s_dout;
+reg  [15:0] s_dout;
 
-latch #(16) dout_l(clk32, 0, 0, LATCH, mbus_in, DOUT);
+mlatch #(16) dout_l(clk32, 0, 0, LATCH, mbus_in, DOUT);
 
-latch #(16) mdout_l(clk32, 0, 0, !WDAT_N, DIN, MDOUT);
+mlatch #(16) mdout_l(clk32, 0, 0, !WDAT_N, DIN, MDOUT);
 
 
 // default video mode is monochrome
@@ -214,7 +214,10 @@ always @(posedge clk32) begin
 		hcnt <= 0;
 		hcnt_en <= 0;
 	end else begin
-		if (!DE) hcnt_en <= 0;
+		if (!DE) begin
+			hcnt <= 0;
+			hcnt_en <= 0;
+		end
 		if (DE & !LOAD_N) hcnt_en <= 1;
 		if (pclk_en) begin
 			if (hcnt_en) hcnt <= hcnt  + 1'd1;
@@ -259,12 +262,10 @@ always @(posedge clk32) begin
 
 	if (!resb) begin
 		plane <= 0;
-		hcnt <= 0;
 	end else begin
 		load_d <= LOAD_N;
 		if (!DE) begin
 			plane <= 0;
-			hcnt <= 0;
 		end else begin
 			if (load_d & ~LOAD_N) begin
 				data_latch[plane] <= MDIN;

@@ -1,12 +1,12 @@
 // simulate latches in the 'clock' domain
 
-module latch (
+module mlatch (
     input clock,
     input s,    // set
     input r,    // reset
     input g,    // gate
     input  [WIDTH-1:0] d, // input
-    output [WIDTH-1:0] q  // output
+    output reg [WIDTH-1:0] q  // output
 );
 
 parameter WIDTH = 1;

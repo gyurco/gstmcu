@@ -6,10 +6,10 @@ module clockgen (
 	input porb,
 	output clk,
 	output mhz8,
-	output mhz8_en1,
-	output mhz8_en2,
+	output reg mhz8_en1,
+	output reg mhz8_en2,
 	output mhz4,
-	output mhz4_en,
+	output reg mhz4_en,
 	output time0,
 	output time1,
 	output time2,
@@ -79,10 +79,8 @@ end
 
 reg mhz16_s;
 reg mhz8_sD, mhz8_s;
-reg mhz8_en1, mhz8_en2;
 reg l2_s, l3_s;
 reg mhz4_s;
-reg mhz4_en;
 reg time0_s;
 reg time1_s;
 reg time2_s;

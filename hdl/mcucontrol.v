@@ -31,13 +31,13 @@ module mcucontrol (
     output ramcycb,
     output refb,
     output frame,
-    output vidb,
+    output reg vidb,
     output viden,
     output vidclkb,
     output vos,
     output sndclk,
     output snden, // sadsel
-    output reg sframe,
+    output sframe,
     output stoff,
     output rdat_n,
     output we_n,
@@ -45,7 +45,7 @@ module mcucontrol (
     output cmpcs_n,
     output dcyc_n,
     output sload_n,
-    output reg sint
+    output sint
 );
 
 wire c1 = ~(lcycsel & time1); // pk033
@@ -61,7 +61,7 @@ end
 assign frame = ~pk005;
 assign viden = ~vidb; // pk010
 assign vidclkb = ~(~addrselb | vidb);
-assign refb = pk016 | pk024;
+assign refb = pk016 & pk024;
 assign vos = ~(vidb & ~snden);
 
 `ifdef VERILATOR
@@ -135,22 +135,21 @@ always @(posedge clk32) begin
     if (c1_en_p) pk031 <= sndon;
 end
 
-wire sframe;
-latch sframe_l(clk32, 0, !pk031, !clk, ~(pk061 & sfrep), sframe);
+mlatch sframe_l(clk32, 0, !pk031, !clk, ~(pk061 & sfrep), sframe);
 
-latch sint_l(clk32, !sintsb, 0, c1_fall, 0, sint);
+mlatch sint_l(clk32, !sintsb, 0, c1_fall, 0, sint);
 //always @(posedge clk32, negedge sintsb) begin
 //    if (!sintsb) sint <= 1;
 //    else if (c1_en_n) sint <= 0;
-//end;
+//end
 
 //latch pk024_l(clk32, 0, !pk031, c1_rise, sreq, pk024);
 always @(posedge clk32, negedge pk031) begin
     if (!pk031) pk024 <= 0;
     else if (c1_en_p) pk024 <= sreq;
-end;
+end
 
-latch sload_n_l(clk32, !porb, 0, clk, ~(time1 & addrselb & snden), sload_n); // pl031
+mlatch sload_n_l(clk32, !porb, 0, clk, ~(time1 & addrselb & snden), sload_n); // pl031
 
 ///////////////////// RAM/SHIFTER ////////////////
 
@@ -182,15 +181,15 @@ reg ramcyc,cmpcyc;
 always @(posedge clk32, negedge cmap) begin
     if (!cmap) cmpcyc <= 0;
     else if(cycsel_en) cmpcyc <= cmap;
-end;
+end
 
 always @(posedge clk32, negedge ramsel) begin
     if (!ramsel) ramcyc <= 0;
     else if (cycsel_en) ramcyc <= ramsel;
-end;
+end
 
 wire dcyc;
-latch dcyc_l(clk32, !porb, 0, clk, !resb | (time1 & addrselb & viden), dcyc); // pl025
+mlatch dcyc_l(clk32, !porb, 0, clk, !resb | (time1 & addrselb & viden), dcyc); // pl025
 
 /////
 
@@ -202,4 +201,4 @@ assign rdat_n = ~((cmpcyc & ramcycb & irwz) | (ramcyc & cmpcycb & irwz));
 assign wdat_n = ~(~we_n | (cmpcyc & ramcycb & ~irwz & ~time1 & ~addrselb));
 assign cmpcs_n =~((cmpcyc & ramcycb & ~irwz & ~time1 & ~addrselb) | (cmpcyc & ramcycb & irwz & lcycsel & ~time1) | ~resb);
 
-endmodule;
+endmodule
