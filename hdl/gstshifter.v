@@ -36,7 +36,7 @@ module gstshifter (
 	input  [15:0] MDIN,  // RAM input
 	output [15:0] MDOUT, // RAM output
 	// VIDEO
-	output MONO,
+	output MONO_OUT,
 	input  LOAD_N,       // DCYC_N
 	input  DE,
 	input  BLANK_N,
@@ -65,6 +65,7 @@ mlatch #(16) mdout_l(clk32, 0, 0, !WDAT_N, DIN, MDOUT);
 // default video mode is monochrome
 parameter DEFAULT_MODE = 2'd2;
 
+assign MONO_OUT = mono;
 // shiftmode register
 reg [1:0] shmode;
 wire mono  = (shmode == 2'd2);
