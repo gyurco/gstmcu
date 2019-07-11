@@ -315,11 +315,15 @@ always @(*) begin
 	if (~rvidbmb)  vid_o = vld[15:8];
 	if (~rvidbhb)  vid_o = { 2'b00, vld[21:16] };
 	if (~rconfigb) vid_o = { 4'b0000, conf_reg };
+	if (~rloclb)   vid_o = { vid[7:1], 1'b0 };
+	if (~rlocmb)   vid_o = vid[15:8];
+	if (~rlochb)   vid_o = { 2'b00, vid[21:16] };
 end
 
 ////////////// SOUND REGISTERS ////////////////
 
-wire [21:1] sfb, sft, sft_l;
+wire [21:1] sfb, sft_l;
+reg  [21:1] sft;
 wire  [3:1] snd_ctrl;
 wire sndon;
 wire sfrep = snd_ctrl[1];
@@ -335,7 +339,8 @@ mlatch #(.WIDTH(7)) sft_lll(clk32, 0, (~resb & porb), ~wsftlb, id[7:1], sft_l[ 7
 mlatch #(.WIDTH(8)) sft_mll(clk32, 0, (~resb & porb), ~wsftmb, id[7:0], sft_l[15: 8]);
 mlatch #(.WIDTH(6)) sft_hll(clk32, 0, (~resb & porb), ~wsfthb, id[5:0], sft_l[21:16]);
 // load sft when no sound
-mlatch #(.WIDTH(21)) sft_ll(clk32, 0, ~porb, ~sframe, sft_l, sft);
+//mlatch #(.WIDTH(21)) sft_ll(clk32, 0, ~porb, ~sframe, sft_l, sft);
+always @(posedge clk32) if (~porb) sft <= 0; else if (~sframe) sft <= sft_l;
 
 reg [7:0] snd_o;
 
@@ -348,6 +353,9 @@ always @(*) begin
 	if (~rsftlb)  snd_o = { sft[7:1], 1'b0 };
 	if (~rsftmb)  snd_o = sft[15:8];
 	if (~rsfthb)  snd_o = { 2'b00, sft[21:16] };
+	if (~rsfclb)  snd_o = { snd[7:1], 1'b0 };
+	if (~rsfcmb)  snd_o = snd[15:8];
+	if (~rsfchb)  snd_o = { 2'b00, snd[21:16] };
 end
 
 //////// BUS TIMING GENERATOR /////////////////
