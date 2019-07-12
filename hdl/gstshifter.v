@@ -62,8 +62,8 @@ mlatch #(16) dout_l(clk32, 0, 0, LATCH, mbus_in, DOUT);
 mlatch #(16) mdout_l(clk32, 0, 0, !WDAT_N, DIN, MDOUT);
 
 
-// default video mode is monochrome
-parameter DEFAULT_MODE = 2'd2;
+// default video mode is 320x200
+parameter DEFAULT_MODE = 2'd0;
 
 assign MONO_OUT = mono;
 // shiftmode register
