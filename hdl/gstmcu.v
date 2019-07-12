@@ -93,7 +93,9 @@ module gstmcu (
     output DCYC_N,
     input  SREQ,
     output SLOAD_N,
-    output SINT
+    output SINT,
+
+    output [1:0] bus_cycle
 );
 
 ///////// ADDRESS BUS MUX ////////
@@ -385,7 +387,7 @@ assign DTACK_N = ~(sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | cartsel |
 ///////// DRAM SIZE/CONFIGURATION DECODES ////////
 
 wire sela = rs2b & rs3b;
-wire [3:0] ramaaa = sela ? { ADDR[21] & ADDR[20], ADDR[19], ADDR[18], ADDR[17] } : { 1'b1, ADDR[21], ADDR[20], ADDR[19] };
+wire [3:0] ramaaa = sela ? { ~ADDR[21] & ~ADDR[20], ~ADDR[19], ~ADDR[18], ~ADDR[17] } : { 1'b1, ~ADDR[21], ~ADDR[20], ~ADDR[19] };
 wire ram1 = rs3b ? &ramaaa : ADDR[21];
 wire ram2 = rs3b ? ramaaa[3] & ramaaa[2] & ramaaa[1] & ~ramaaa[0] : ~ADDR[21];
 
@@ -417,6 +419,8 @@ wire ixdmab = 1;
 wire clk,time0,time1,time2,time4,addrsel,m2clock,m2clock_en_p,m2clock_en_n,clk4,cycsel,cycsel_en;
 wire lcycsel = cycsel;
 wire addrselb = ~addrsel;
+
+assign bus_cycle = { ~time4, ~time0 };
 
 clockgen clockgen (
     .clk32(clk32),

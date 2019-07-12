@@ -163,7 +163,9 @@ gstmcu gstmcu (
     .DCYC_N(dcyc_n),
     .SREQ(sreq),
     .SLOAD_N(sload_n),
-    .SINT(SINT)
+    .SINT(SINT),
+
+    .bus_cycle()
 );
 
 wire [15:0] shifter_dout;
