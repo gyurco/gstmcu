@@ -185,7 +185,7 @@ wire [3:0] mono_rgb = { mono_bit, mono_bit, mono_bit, mono_bit };
 
 // For ST compatibility reasons the STE has the color bit order 0321. This is 
 // handled here
-wire [3:0] color_index = { shift_3[15], shift_2[15], shift_1[15], shift_0[15] };
+wire [3:0] color_index = low ? { shift_3[15], shift_2[15], shift_1[15], shift_0[15] } : { 2'b00, shift_1[15], shift_0[15] };
 wire [3:0] color_r_pal = palette_r[color_index];
 wire [3:0] color_r = { color_r_pal[2:0], color_r_pal[3] };
 wire [3:0] color_g_pal = palette_g[color_index];
