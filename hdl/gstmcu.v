@@ -585,15 +585,14 @@ wire       hblank_reset = mde1 | hdec == 8'd114;
 reg        hde, hde1;
 wire       hde_set   = (cntsc & hdec == 8'd11) | (cpal & hdec == 8'd12) | (mde1 & hdec == 8'd2);
 wire       hde_reset = (cntsc & hdec == 8'd93) | (cpal & hdec == 8'd96) | (mde1 & hdec == 8'd43);
-reg        hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4, hde_set_r5, hde_reset_r;
+reg        hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4;
 
 always @(posedge clk32, negedge porb) begin
 	if (!porb) begin
 		hdec <= 0;
 		hblank <= 0;
 
-		{ hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4, hde_set_r5 } <= 0;
-		hde_reset_r <= 1;
+		{ hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4 } <= 0;
 		hde <= 0;
 	end else begin
 		if ((m2clock_en_p && hsc == ihsync_set) || ~iihsync) begin
@@ -601,8 +600,7 @@ always @(posedge clk32, negedge porb) begin
 			hdec <= 0;
 			hblank <= 0;
 
-			{ hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4, hde_set_r5 } <= 0;
-			hde_reset_r <= 1;
+			{ hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4 } <= 0;
 			hde <= 0;
 		end else
 		if (m2clock_en_n) begin
@@ -615,7 +613,6 @@ always @(posedge clk32, negedge porb) begin
 			hde_set_r2 <= hde_set_r1;
 			hde_set_r3 <= hde_set_r2;
 			hde_set_r4 <= hde_set_r3;
-			hde_reset_r <= hde_reset;
 			if (hde_reset) hde <= 0;
 			else if ( noscroll && ((~mde1 & hde_set_r4) || (mde1 && hde_set_r1))) hde <= 1;
 			else if (!noscroll && ((~mde0 & hde_set) || (mde0 && hde_set_r2))) hde <= 1;
