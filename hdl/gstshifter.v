@@ -224,9 +224,9 @@ always @(posedge clk32) begin
 			if (hcnt_en) hcnt <= hcnt  + 1'd1;
 
 			// drive video output
-			R <= BLANK_N?stvid_r:4'b0000;
-			G <= BLANK_N?stvid_g:4'b0000;
-			B <= BLANK_N?stvid_b:4'b0000;
+			R <= (BLANK_N | mono)?stvid_r:4'b0000;
+			G <= (BLANK_N | mono)?stvid_g:4'b0000;
+			B <= (BLANK_N | mono)?stvid_b:4'b0000;
 
 			// shift all planes and reload 
 			// shift registers every 16 pixels
