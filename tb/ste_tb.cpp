@@ -26,8 +26,7 @@ void tick(int c) {
 	tb->eval();
 	trace->dump(tickcount++);
 
-//	if (c && (old_addr != tb->ram_a || !tb->we_n) && tb->ram_a < 0x200000) {
-	if (c && !(tb->RAS0_N && tb->RAS1_N && tb->ROM2_N) && tb->ram_a < 0x200000) {
+	if (c && !(tb->RAS0_N && tb->RAS1_N) && tb->ram_a < 0x200000) {
 		if (!tb->we_n) {
 			ram[tb->ram_a<<1] = (tb->mdout & 0xff00) >> 8;
 			ram[(tb->ram_a<<1) + 1] = tb->mdout & 0xff;
@@ -35,7 +34,11 @@ void tick(int c) {
 		}
 		tb->mdin = (ram[tb->ram_a<<1] * 256) + ram[(tb->ram_a<<1) + 1];
 		//if (!tb->AS_N) std::cout << "ram access at " << std::hex << tb->ram_a << " value " << tb->mdin << std::endl;
-		old_addr = tb->ram_a;
+	}
+
+	if (c && !tb->ROM2_N && tb->A < 0x200000) {
+		tb->mdin = (ram[tb->A<<1] * 256) + ram[(tb->A<<1) + 1];
+		//if (!tb->AS_N) std::cout << "ram access at " << std::hex << tb->ram_a << " value " << tb->mdin << std::endl;
 	}
 }
 
@@ -169,6 +172,21 @@ int read_reg(int addr)
 	return dout;
 }
 
+void memtest() {
+	FILE *file;
+	int addr=0,data,data2;
+	file = fopen("memtest.bin", "wb");
+	while(true) {
+		data=read_reg(addr<<1);
+//		std::cout << "addr: " << std::hex << addr << " data: " << data << std::endl;
+		data2=((data & 0xff) << 8) | ((data >> 8) & 0xff);
+		fwrite(&data2,1,2,file);
+		addr++;
+		if(addr==0x200000) break;
+	}
+	fclose(file);
+}
+
 void dump(bool ntsc, bool mde0, bool mde1, bool vid) {
 	int steps = 128*2048*8;
 	bool disp;
@@ -278,6 +296,8 @@ int main(int argc, char **argv) {
 	write_reg(0xff825c, 0x03f3);
 	write_reg(0xff825e, 0x0ff3);
 
+//	memtest();
+
 //	write_reg(0xff820e, 0x0050); // horizontal offset
 
 	dump(false,true,false,true);
@@ -301,4 +321,5 @@ int main(int argc, char **argv) {
 	std::cout << std::hex << read_reg(0x000002) << std::endl;
 
 	trace->close();
+
 }

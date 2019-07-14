@@ -93,7 +93,8 @@ module ste_tb (
 // shifter signals
 wire        cmpcs_n, latch, de, blank_n, rdat_n, wdat_n, dcyc_n, sreq, sload_n;
 
-assign      DOUT = rdat_n ? mcu_dout : shifter_dout;
+wire        ROM_N = ROM0_N & ROM1_N & ROM2_N & ROM3_N & ROM4_N & ROM5_N & ROM6_N & ROMP_N;
+assign      DOUT = ROM_N ? (rdat_n ? mcu_dout : shifter_dout) : mdin;
 wire [15:0] mcu_dout;
 
 gstmcu gstmcu (
