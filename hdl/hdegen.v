@@ -48,7 +48,7 @@ reg        hde;
 wire       hde_set   = (cntsc & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] &  hdec[3] & hdecb[2] &  hdec[1] &  hdec[0]) | // 00001011 = 11
                        (cpal  & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] &  hdec[3] &  hdec[2] & hdecb[1] & hdecb[0]) | // 00001100 = 12
                        (mde1  & hdecb[7] & hdecb[6] & hdecb[5] & hdecb[4] & hdecb[3] & hdecb[2] &  hdec[1] & hdecb[0]);  // 00000010 = 2
-wire       hde_reset = (cntsc & hdecb[7] &  hdec[6] & hdecb[5] &  hdec[4] &  hdec[3] &  hdec[2] &  hdec[1] &  hdec[0]) | // 01011101 = 93
+wire       hde_reset = (cntsc & hdecb[7] &  hdec[6] & hdecb[5] &  hdec[4] &  hdec[3] &  hdec[2] &  hdec[1] &  hdec[0]) | // 01011101 = 95
                        (cpal  & hdecb[7] &  hdec[6] &  hdec[5] & hdecb[4] & hdecb[3] & hdecb[2] & hdecb[1] & hdecb[0]) | // 01100000 = 96
                        (mde1  & hdecb[7] & hdecb[6] &  hdec[5] & hdecb[4] &  hdec[3] & hdecb[2] &  hdec[1] &  hdec[0]);  // 00101011 = 43
 

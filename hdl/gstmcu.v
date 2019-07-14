@@ -584,7 +584,7 @@ wire       hblank_reset = mde1 | hdec == 8'd114;
 
 reg        hde, hde1;
 wire       hde_set   = (cntsc & hdec == 8'd11) | (cpal & hdec == 8'd12) | (mde1 & hdec == 8'd2);
-wire       hde_reset = (cntsc & hdec == 8'd93) | (cpal & hdec == 8'd96) | (mde1 & hdec == 8'd43);
+wire       hde_reset = (cntsc & hdec == 8'd95) | (cpal & hdec == 8'd96) | (mde1 & hdec == 8'd43);
 reg        hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4;
 
 always @(posedge clk32, negedge porb) begin
