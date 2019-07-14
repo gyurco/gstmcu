@@ -258,13 +258,13 @@ assign DOUT[ 7:0] = vid_o & snd_o;
 assign HSYNC_N = iihsync;
 assign VSYNC_N = iivsync;
 assign IPL0_N = 1'b1;
-assign IPL1_N = MFPINT_N & ~hint;
+assign IPL1_N = MFPINT_N & (hintb | ~vintb);
 assign IPL2_N = MFPINT_N & vintb;
 
-wire hintb, hint = ~hintb;
-register hintb_r(clk32, ~(resb & porb & vclrb), 0, ~iihsync, 0, hintb);
+wire hintb;
+register hintb_r(clk32, ~(resb & porb & hclrb), 0, ~iihsync, 0, hintb);
 wire vintb;
-register vintb_r(clk32, ~(resb & porb & hclrb), 0, ~iivsync, 0, vintb);
+register vintb_r(clk32, ~(resb & porb & vclrb), 0, ~iivsync, 0, vintb);
 
 //////// BUS ERROR GENERATION //////////////
 
