@@ -57,9 +57,9 @@ module gstshifter (
 wire [15:0] mbus_in = CS ? s_dout : MDIN;
 reg  [15:0] s_dout;
 
-mlatch #(16) dout_l(clk32, 0, 0, LATCH, mbus_in, DOUT);
+mlatch #(16) dout_l(clk32, 1'b0, 1'b0, LATCH, mbus_in, DOUT);
 
-mlatch #(16) mdout_l(clk32, 0, 0, !WDAT_N, DIN, MDOUT);
+mlatch #(16) mdout_l(clk32, 1'b0, 1'b0, !WDAT_N, DIN, MDOUT);
 
 
 // default video mode is 320x200
@@ -147,7 +147,7 @@ always @(posedge clk32) begin
 			// writing special STE registers
 			if(ste) begin
 				if(A == 6'h32) begin
-					pixel_offset <= DIN[3:0];
+					pixel_offset <= MDOUT[3:0];
 				end
 			end
 
@@ -155,18 +155,18 @@ always @(posedge clk32) begin
 			// ste mode as this is the lsb of ste
 			if(A >= 6'h20 && A < 6'h30 ) begin
 				if(!ste) begin
-					palette_r[A[4:1]] <= { 1'b0, DIN[10:8] };
-					palette_g[A[4:1]] <= { 1'b0, DIN[ 6:4] };
-					palette_b[A[4:1]] <= { 1'b0, DIN[ 2:0] };
+					palette_r[A[4:1]] <= { 1'b0, MDOUT[10:8] };
+					palette_g[A[4:1]] <= { 1'b0, MDOUT[ 6:4] };
+					palette_b[A[4:1]] <= { 1'b0, MDOUT[ 2:0] };
 				end else begin
-					palette_r[A[4:1]] <= DIN[11:8];
-					palette_g[A[4:1]] <= DIN[ 7:4];
-					palette_b[A[4:1]] <= DIN[ 3:0];
+					palette_r[A[4:1]] <= MDOUT[11:8];
+					palette_g[A[4:1]] <= MDOUT[ 7:4];
+					palette_b[A[4:1]] <= MDOUT[ 3:0];
 				end
 			end
 
 			// make msb writeable if MiST video modes are enabled
-			if(A == 6'h30) shmode <= DIN[9:8];
+			if(A == 6'h30) shmode <= MDOUT[9:8];
 		end
 	end
 end
@@ -349,27 +349,33 @@ always @(posedge clk32) begin
 		mw_cnt <= 7'h00;        // no micro wire transfer in progress
 	end else begin
 		// sound mode register
-		if(CS && !RW && A == 6'h10) mode <= { DIN[7], DIN[1:0] };
+		if(CS && !RW && A == 6'h10) mode <= { MDOUT[7], MDOUT[1:0] };
 		// micro wire has a 16 bit interface
-		if(CS && !RW && A == 6'h12) mw_mask_reg <= DIN;
+		if(CS && !RW && A == 6'h12) mw_mask_reg <= MDOUT;
 	end
 
 	// ----------- micro wire interface -----------
-	if(clk_8_en && mw_cnt != 0) begin
+	// writing the data register triggers the transfer
+	if(clk_8_en && (mw_write || (mw_cnt != 0))) begin
 
 		// decrease shift counter. Do this before the register write as
 		// register write has priority and should reload the counter
 		if(mw_cnt != 0)
 			mw_cnt <= mw_cnt - 7'd1;
 
-		if(mw_cnt[2:0] == 3'b000) begin
+		if(mw_write) begin
+			// first bit is evaluated imediately
+			mw_data_reg <= { MDOUT[14:0], 1'b0 };
+			mw_data <= MDOUT[15];
+			mw_cnt <= 7'h7f;
+		end else if(mw_cnt[2:0] == 3'b000) begin
 			// send/shift next bit every 8 clocks -> 1 MBit/s
 			mw_data_reg <= { mw_data_reg[14:0], 1'b0 };
 			mw_data <= mw_data_reg[15];
 		end
 
 		// rotate mask on first access and on every further 8 clocks
-		if(mw_cnt[2:0] == 3'b000) begin
+		if(mw_write || (mw_cnt[2:0] == 3'b000)) begin
 			mw_mask_reg <= { mw_mask_reg[14:0], mw_mask_reg[15]};
 			// notify client of valid bits
 			mw_clk <= mw_mask_reg[15];
@@ -378,18 +384,6 @@ always @(posedge clk32) begin
 		// indicate end of transfer
 		mw_done <= (mw_cnt == 7'h01);
 	end
-
-	// writing the data register triggers the transfer
-	if (mw_write) begin
-		// first bit is evaluated imediately
-		mw_data_reg <= { DIN[14:0], 1'b0 };
-		mw_data <= DIN[15];
-		mw_cnt <= 7'h7f;
-		mw_mask_reg <= { mw_mask_reg[14:0], mw_mask_reg[15]};
-		// notify client of valid bits
-		mw_clk <= mw_mask_reg[15];
-	end
-
 end
 
 // ---------------------------------------------------------------------------
