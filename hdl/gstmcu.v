@@ -30,7 +30,7 @@ module gstmcu (
     input clk32,
     input resb,
     input porb,
-    input interlace,
+    input  BR_N,
     input  FC0,
     input  FC1,
     input  FC2,
@@ -99,6 +99,7 @@ module gstmcu (
 );
 
 ///////// ADDRESS BUS MUX ////////
+wire ixdmab = 1;
 
 always @(*) begin
     casez ({ addrselb, ixdmab, snden, refb })
@@ -273,7 +274,7 @@ assign BERR_N = ~berr_cnt[6];
 
 always @(posedge clk32, negedge porb) begin
     if (!porb) berr_cnt <= 0;
-    else if (~ias) berr_cnt <= 0;
+    else if (~ias | ~BR_N) berr_cnt <= 0;
     else if (MHZ8_EN1) berr_cnt <= berr_cnt + 1'd1;
 end
 
@@ -415,7 +416,6 @@ assign RAM_UDS = (time0 & addrselb & (ram1a | ram2a) & vos) | (~time0 & addrsel 
 
 ////////////////////////////////////////////
 
-wire ixdmab = 1;
 wire clk,time0,time1,time2,time4,addrsel,m2clock,m2clock_en_p,m2clock_en_n,clk4,cycsel,cycsel_en;
 wire lcycsel = cycsel;
 wire addrselb = ~addrsel;
@@ -499,6 +499,7 @@ mcucontrol mcucontrol (
 );
 
 /////// HORIZONTAL SYNC GENERATOR ////////
+wire interlace = 0; // investigate is it useful or not?
 
 wire ihsync = ~iihsync;
 wire ivsync = ~iivsync;
