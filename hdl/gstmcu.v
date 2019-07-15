@@ -174,7 +174,7 @@ assign ROM5_N = ~irom5;
 assign ROM6_N = ~irom6;
 assign ROMP_N = ~romp;
 
-wire system = ifc2z | A[15:11] == 0;
+wire system = ifc2z | A[15:11] != 0;
 wire irama = |A[21:16];
 wire iramb = fcx & ~A[23] & ~A[22];
 wire iramaa = irama & iramb; // 01xxxxx - 3fxxxxx
