@@ -396,8 +396,9 @@ assign RDY_N = ready;
 wire   aso   = p8008 | ~p8010;
 wire   dso   = (p8008 & p8001) | (p8008 & drw) | ~p8010;
 
+reg p8001, p8006, p8008, p8010 = 1'b1;
+
 `ifdef VERILATOR
-reg p8001, p8006, p8008, p8010;
 
 always @(posedge ready, negedge porb, negedge ias) begin
 	if (!porb) fcsackb <= 1'b1;
