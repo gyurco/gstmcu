@@ -242,13 +242,18 @@ int main(int argc, char **argv) {
 	tb->trace(trace, 99);
 	trace->open("gstmcu.vcd");
 
-	tb->interlace = 0;
+	tb->resb = 0;
+	tb->porb = 0;
+	tick(1);
+	tick(0);
+
 	tb->AS_N = 1;
 	tb->UDS_N = 1;
 	tb->LDS_N = 1;
 	tb->RW = 1;
 	tb->VMA_N = 1;
 	tb->MFPINT_N = 1;
+	tb->BR_N = 1;
 
 	tb->FC0 = 0;
 	tb->FC1 = 1;

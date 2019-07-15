@@ -49,6 +49,7 @@ module gstmcu (
     output MHZ8_EN2,
     output MHZ4,
     output MHZ4_EN,
+    output RDY_N,
     output BERR_N,
     output IPL0_N,
     output IPL1_N,
@@ -113,15 +114,18 @@ end
 
 /////// BUS INTERFACE //////////
 
-wire         ias = ~AS_N;
-wire         irwz = RW;
-wire         irwb = ~RW;
-wire         iuds = ~UDS_N;
-wire         ilds = ~LDS_N;
+wire         ias  = ixdma ? aso : ~AS_N;
+wire         irwz = ixdma ? drw : RW;
+wire         irwb = ~irwz;
+wire         iuds = ixdma ? dso : ~UDS_N;
+wire         ilds = ixdma ? dso : ~LDS_N;
 wire         ivma = ~VMA_N;
-wire         iiack = ias & FC0 & FC1 & FC2;
-wire         ifc2z = FC2;
-wire         fcx = FC0 ^ FC1;
+wire         ifc0  = ixdma ? 1'b1 : FC0;
+wire         ifc1  = ixdma ? 1'b0 : FC1;
+wire         ifc2  = ixdma ? 1'b1 : FC2;
+wire         iiack = ias & ifc0 & ifc1 & ifc2;
+wire         ifc2z = ifc2;
+wire         fcx = ifc0 ^ ifc1;
 wire [15:0]  id = DIN;
 
 //////// ADDRESS DECODE /////////
@@ -137,10 +141,12 @@ assign VPA_N = ~((idev & ias & A[15:9] == { 4'hF, 3'b110 }) | ~vclrb | ~hclrb); 
 
 assign MFPCS_N = ~(idev & ias & A[15:6] == { 8'hFA, 2'b00 });  // FFFA0x-FFFA3x
 wire   isndcsb = ~(idev & ias & A[15:8] == 8'h88);             // FF88xx
-assign SNDIR = ~isndcsb & ~irwz;
-assign SNDCS = ~isndcsb & ~A[1];
-assign N6850 = ~(idev & ivma & A[15:3] == { 12'hFC0, 1'b0 });  // FFFC00-FFFC07
-assign FCS_N = ~(idev & ias & ilds & iuds & A[15:2] == { 12'h860, 2'b01 }); // FF8604-FF8607
+assign SNDIR   = ~isndcsb & ~irwz;
+assign SNDCS   = ~isndcsb & ~A[1];
+assign N6850   = ~(idev & ivma & A[15:3] == { 12'hFC0, 1'b0 });  // FFFC00-FFFC07
+wire   pifcsb  = ~(idev & ias & ilds & iuds & A[15:2] == { 12'h860, 2'b01 }); // FF8604-FF8607
+wire   ifcsb   = pifcsb & resb;
+assign FCS_N   = ifcsb;
 assign RTCCS_N = ~(idev & ias & A[15:5] == { 8'hFC, 3'b001 }); // FFFC2x-FFFC3x
 assign RTCRD_N = ~(irwz & ivma & ilds);
 assign RTCWR_N = ~(irwb & ivma & ilds);
@@ -383,7 +389,49 @@ always @(posedge clk32, posedge isndcsb) begin
 	end
 end
 
-assign DTACK_N = ~(sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | cartsel | syncsel | butr | joysel | padr | penr);
+reg fcsackb = 1'b1;
+
+wire   ready = ~aso;
+assign RDY_N = ready;
+wire   aso   = p8008 | ~p8010;
+wire   dso   = (p8008 & p8001) | (p8008 & drw) | ~p8010;
+
+`ifdef VERILATOR
+reg p8001, p8006, p8008, p8010;
+
+always @(posedge ready, negedge porb, negedge ias) begin
+	if (!porb) fcsackb <= 1'b1;
+	else if (!ias) fcsackb <= 1'b1;
+	else fcsackb <= ifcsb;
+end
+
+always @(negedge MHZ8, negedge porb) begin
+	if (!porb) p8006 <= 1'b0;
+	else p8006 <= dtack;
+end
+
+always @(posedge MHZ8, negedge porb, negedge ixdma) begin
+	if (!porb) { p8001, p8008 } <= 2'b00;
+	else if (!ixdma) { p8001, p8008 } <= 2'b00;
+	else begin
+		p8001 <= p8008;
+		p8008 <= p8001 ^ ~(p8008 & p8001 & ~p8006);;
+	end
+end
+
+always @(negedge MHZ8, negedge porb, negedge ixdma) begin
+	if (!porb) p8010 <= 1'b1;
+	else if (!ixdma) p8010 <= 1'b1;
+	else begin
+		p8010 <= ~(p8001 & p8008);
+	end
+end
+`endif
+
+wire   ixdma   = ~ixdmab;
+
+wire   dtack   = sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | cartsel | syncsel | butr | joysel | padr | penr | ~fcsackb;
+assign DTACK_N = ~dtack;
 
 ///////// DRAM SIZE/CONFIGURATION DECODES ////////
 
