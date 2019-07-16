@@ -218,7 +218,10 @@ void dump(bool ntsc, bool mde0, bool mde1, bool vid) {
 	    tick(0);
 	    if (disp) print(false);
 	    if (vid && vidout) {
-		rgb = tb->R*256 + tb->G*16 + tb->B;
+		if (!tb->VSYNC_N) rgb = 0x00f0;
+		else if (!tb->HSYNC_N) rgb = 0x0f00;
+		else if (!tb->BLANK_N) rgb = 0x000f;
+		else rgb = tb->R*256 + tb->G*16 + tb->B;
 		fwrite(&rgb, 1, sizeof(rgb), file);
 	    }
 	}

@@ -78,6 +78,7 @@ module ste_tb (
     output RTCWR_N,
     output HSYNC_N,
     output VSYNC_N,
+    output BLANK_N,
     output SINT,
 
     output MONO,
@@ -92,7 +93,7 @@ module ste_tb (
 );
 
 // shifter signals
-wire        cmpcs_n, latch, de, blank_n, rdat_n, wdat_n, dcyc_n, sreq, sload_n;
+wire        cmpcs_n, latch, de, rdat_n, wdat_n, dcyc_n, sreq, sload_n;
 
 wire        ROM_N = ROM0_N & ROM1_N & ROM2_N & ROM3_N & ROM4_N & ROM5_N & ROM6_N & ROMP_N;
 assign      DOUT = ROM_N ? (rdat_n ? mcu_dout : shifter_dout) : mdin;
@@ -158,7 +159,7 @@ gstmcu gstmcu (
     .HSYNC_N(HSYNC_N),
     .VSYNC_N(VSYNC_N),
     .DE(de),
-    .BLANK_N(blank_n),
+    .BLANK_N(BLANK_N),
     .RDAT_N(rdat_n),
     .WE_N(we_n),
     .WDAT_N(wdat_n),
@@ -194,7 +195,7 @@ gstshifter gstshifter (
     .MONO_OUT(MONO),
     .LOAD_N(dcyc_n),
     .DE(de),
-    .BLANK_N(blank_n),
+    .BLANK_N(BLANK_N),
     .R(R),
     .G(G),
     .B(B),
