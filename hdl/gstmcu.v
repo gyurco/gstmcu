@@ -30,7 +30,6 @@ module gstmcu (
     input clk32,
     input resb,
     input porb,
-    input  BR_N,
     input  FC0,
     input  FC1,
     input  FC2,
@@ -49,7 +48,13 @@ module gstmcu (
     output MHZ8_EN2,
     output MHZ4,
     output MHZ4_EN,
-    output RDY_N,
+    input  RDY_N_I,
+    output RDY_N_O,
+    input  BG_N,
+    input  BR_N_I,
+    output BR_N_O,
+    input  BGACK_N_I,
+    output BGACK_N_O,
     output BERR_N,
     output IPL0_N,
     output IPL1_N,
@@ -96,15 +101,14 @@ module gstmcu (
     output SLOAD_N,
     output SINT,
 
-    output [1:0] bus_cycle
+    input [23:1] dma_addr, // until internal dma address counter is done
+    output [1:0] bus_cycle // compatibility signal for existing code
 );
 
 ///////// ADDRESS BUS MUX ////////
-wire ixdmab = 1;
-
 always @(*) begin
     casez ({ addrselb, ixdmab, snden, refb })
-        4'b00??: ADDR = 0; // DMA_ADDR
+        4'b00??: ADDR = dma_addr; // DMA_ADDR
         4'b01??: ADDR = A; // CPU_ADDR
         4'b1??0: ADDR = 0; // REFRESH_ADDR
         4'b1?11: ADDR = { 2'b0, snd }; // SND DMA ADDR
@@ -280,7 +284,7 @@ assign BERR_N = ~berr_cnt[6];
 
 always @(posedge clk32, negedge porb) begin
     if (!porb) berr_cnt <= 0;
-    else if (~ias | ~BR_N) berr_cnt <= 0;
+    else if (~ias) berr_cnt <= 0;
     else if (MHZ8_EN1) berr_cnt <= berr_cnt + 1'd1;
 end
 
@@ -391,8 +395,8 @@ end
 
 reg fcsackb = 1'b1;
 
-wire   ready = ~aso;
-assign RDY_N = ready;
+assign RDY_N_O = ~aso;
+wire   ready = RDY_N_O & RDY_N_I;
 wire   aso   = p8008 | ~p8010;
 wire   dso   = (p8008 & p8001) | (p8008 & drw) | ~p8010;
 
@@ -429,10 +433,43 @@ always @(negedge MHZ8, negedge porb, negedge ixdma) begin
 end
 `endif
 
-wire   ixdma   = ~ixdmab;
 
 wire   dtack   = sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | cartsel | syncsel | butr | joysel | padr | penr | ~fcsackb;
 assign DTACK_N = ~dtack;
+
+/////////////// BUS ARBITRATION //////////////////
+
+reg    ixdma; // p9021
+wire   ixdmab    = ~ixdma;
+wire   br_n      = BR_N_I & BR_N_O;
+wire   bgack_n   = BGACK_N_I & BGACK_N_O;
+assign BGACK_N_O = ixdmab;
+reg    br_o;  // p9011
+assign BR_N_O    = ~br_o;
+
+reg    p9033;
+wire   p9033_i   = (ready & ~ias) | (p9033 & ias);
+
+wire   ixdma_i   = ixdma | (~ias & ~BG_N);
+
+wire   br_o_i    = (br_n | br_o) & (BG_N | br_o) & p9033 & bgack_n;
+
+`ifdef VERILATOR
+always @(posedge MHZ8, negedge porb, negedge resb) begin
+	if (!porb) p9033 <= 1'b0;
+	else if (!resb) p9033 <= 1'b0;
+	else p9033 <= p9033_i;
+
+	if (!porb) br_o <= 1'b0;
+	else if (!resb) br_o <= 1'b0;
+	else br_o <= br_o_i;
+end
+
+always @(negedge MHZ8, negedge p9033) begin
+	if (!p9033) ixdma <= 1'b0;
+	else ixdma <= ixdma_i;
+end
+`endif
 
 ///////// DRAM SIZE/CONFIGURATION DECODES ////////
 

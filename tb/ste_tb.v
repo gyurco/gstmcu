@@ -43,7 +43,6 @@ module ste_tb (
     output MHZ8_EN2,
     output MHZ4,
     output MHZ4_EN,
-    output RDY_N,
     output BERR_N,
     output IPL0_N,
     output IPL1_N,
@@ -89,21 +88,31 @@ module ste_tb (
     output [23:1] ram_a,
     output we_n,
     output [15:0] mdout,
-    input  [15:0] mdin
+    input  [15:0] mdin,
+
+    output bus_free
 );
 
 // shifter signals
 wire        cmpcs_n, latch, de, rdat_n, wdat_n, dcyc_n, sreq, sload_n;
 
+reg         bg_n = 1'b1;
+wire        br_n_i, br_n_o, bgack_n_i, bgack_n_o, rdy_n_i, rdy_n_o;
 wire        ROM_N = ROM0_N & ROM1_N & ROM2_N & ROM3_N & ROM4_N & ROM5_N & ROM6_N & ROMP_N;
 assign      DOUT = ROM_N ? (rdat_n ? mcu_dout : shifter_dout) : mdin;
 wire [15:0] mcu_dout;
+wire [15:0] mbus_din = ~rdy_n_o ? dma_dout : DIN;
+
+assign br_n_i = 1;
+assign bgack_n_i = bgack_n_o;
+assign bus_free = bg_n & bgack_n_o;
+
+always @(posedge clk32) if (MHZ8_EN1 && AS_N) bg_n <= br_n_o;
 
 gstmcu gstmcu (
     .clk32(clk32),
     .resb(resb),
     .porb(porb),
-    .BR_N(BR_N),
     .FC0(FC0),
     .FC1(FC1),
     .FC2(FC2),
@@ -115,14 +124,20 @@ gstmcu gstmcu (
     .MFPINT_N(MFPINT_N),
     .A(A),    // from CPU
     .ADDR(ram_a), // to RAM
-    .DIN(DIN),
+    .DIN(mbus_din),
     .DOUT(mcu_dout),
     .MHZ8(MHZ8),
     .MHZ8_EN1(MHZ8_EN1),
     .MHZ8_EN2(MHZ8_EN2),
     .MHZ4(MHZ4),
     .MHZ4_EN(MHZ4_EN),
-    .RDY_N(RDY_N),
+    .BR_N_I(br_n_i),
+    .BR_N_O(br_n_o),
+    .BG_N(bg_n),
+    .BGACK_N_I(bgack_n_i),
+    .BGACK_N_O(bgack_n_o),
+    .RDY_N_I(rdy_n_i),
+    .RDY_N_O(rdy_n_o),
     .BERR_N(BERR_N),
     .IPL0_N(IPL0_N),
     .IPL1_N(IPL1_N),
@@ -169,7 +184,24 @@ gstmcu gstmcu (
     .SLOAD_N(sload_n),
     .SINT(SINT),
 
+    .dma_addr(dma_addr),
     .bus_cycle()
+);
+
+wire [23:1] dma_addr;
+wire [15:0] dma_dout;
+
+dma_tb dma_tb (
+    .clk32(clk32),
+    .clk_en(MHZ8_EN1),
+    .FCS_N(FCS_N),
+    .RW(RW),
+    .RDY_I(rdy_n_o),
+    .RDY_O(rdy_n_i),
+    .A1(A[1]),
+    .dma_addr(dma_addr),
+    .DIN(DIN),
+    .DOUT(dma_dout)
 );
 
 wire [15:0] shifter_dout;
@@ -182,7 +214,7 @@ gstshifter gstshifter (
     // CPU/RAM interface
     .CS(~cmpcs_n),
     .A(A[6:1]),
-    .DIN(DIN),
+    .DIN(mbus_din),
     .DOUT(shifter_dout),
     .LATCH(latch),
     .RDAT_N(rdat_n),   // latched MDIN -> DOUT

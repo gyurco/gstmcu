@@ -52,6 +52,10 @@ void print(bool rise) {
 
 void write_reg(int addr, int data)
 {
+	while (!tb->bus_free) {
+		tick(1);
+		tick(0);
+	}
 	// S0
 	while (!tb->MHZ8_EN1) {
 		tick(1);
@@ -118,6 +122,10 @@ void write_reg(int addr, int data)
 int read_reg(int addr)
 {
 	int dout;
+	while (!tb->bus_free) {
+		tick(1);
+		tick(0);
+	}
 	// S0
 	while (!tb->MHZ8_EN1) {
 		tick(1);
@@ -306,12 +314,17 @@ int main(int argc, char **argv) {
 
 //	memtest();
 
+	write_reg(0xff8606, 0x0); // dma write test
+
+
 //	write_reg(0xff820e, 0x0050); // horizontal offset
 
 	dump(false,true,false,true);
 
 	std::cout << std::hex << "ram 0x0ffff (0xaaaa): " << std::hex << read_reg(0xffff) << std::endl;
 	std::cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
+
+	write_reg(0xff8606, 0x100); // dma read test
 
 	write_reg(0xff8800, 0); //write to AY
 //	write_reg(0xff8264, 0x00aa); //write to hscroll

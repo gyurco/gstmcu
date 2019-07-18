@@ -154,7 +154,7 @@ mlatch sload_n_l(clk32, !porb, 0, clk, ~(time1 & addrselb & snden), sload_n); //
 ///////////////////// RAM/SHIFTER ////////////////
 
 wire cmap = (~irwz | iuds | ilds) & (~vmapb | ~smapb) & idev & ias;
-wire ramsel = (~irwz | ilds | iuds) & ixdmab & ias & iram;
+wire ramsel = (~irwz | ilds | iuds) & ias & iram;
 
 `ifdef VERILATOR
 
