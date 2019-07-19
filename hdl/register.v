@@ -1,4 +1,5 @@
 // simulate registers with async clocks in the 'clock' domain
+// has a delay of a half clock
 
 module register (
     input clock,

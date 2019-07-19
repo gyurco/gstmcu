@@ -393,21 +393,22 @@ always @(posedge clk32, posedge isndcsb) begin
 	end
 end
 
-reg fcsackb = 1'b1;
 
 assign RDY_N_O = ~aso;
 wire   ready = RDY_N_O & RDY_N_I;
-wire   aso   = p8008 | ~p8010;
-wire   dso   = (p8008 & p8001) | (p8008 & drw) | ~p8010;
-
-reg p8001, p8006, p8008, p8010 = 1'b1;
 
 `ifdef VERILATOR
 
+wire   aso_a = p8008 | ~p8010;
+wire   dso_a = (p8008 & p8001) | (p8008 & drw) | ~p8010;
+
+reg fcsackb_a = 1'b1;
+reg p8001, p8006, p8008, p8010 = 1'b1;
+
 always @(posedge ready, negedge porb, negedge ias) begin
-	if (!porb) fcsackb <= 1'b1;
-	else if (!ias) fcsackb <= 1'b1;
-	else fcsackb <= ifcsb;
+	if (!porb) fcsackb_a <= 1'b1;
+	else if (!ias) fcsackb_a <= 1'b1;
+	else fcsackb_a <= ifcsb;
 end
 
 always @(negedge MHZ8, negedge porb) begin
@@ -420,7 +421,7 @@ always @(posedge MHZ8, negedge porb, negedge ixdma) begin
 	else if (!ixdma) { p8001, p8008 } <= 2'b00;
 	else begin
 		p8001 <= p8008;
-		p8008 <= p8001 ^ ~(p8008 & p8001 & ~p8006);;
+		p8008 <= p8001 ^ ~(p8008 & p8001 & ~p8006);
 	end
 end
 
@@ -433,43 +434,67 @@ always @(negedge MHZ8, negedge porb, negedge ixdma) begin
 end
 `endif
 
+wire fcsackb;
+register fcsackb_r(clk32, ~(porb & ias), 0, ready, ifcsb, fcsackb);
 
+wire dtack_d, p8001_s, p8008_s, p8010_s;
+register dtack_d_r(clk32, 0, !porb, ~MHZ8, dtack, dtack_d); // p8006
+register p8001_r(clk32, 0, ~(porb & ixdma), MHZ8, p8008_s, p8001_s);
+register p8008_r(clk32, 0, ~(porb & ixdma), MHZ8, p8001_s ^ ~(p8008_s & p8001_s & ~dtack_d), p8008_s);
+register p8010_r(clk32, ~(porb & ixdma), 0, ~MHZ8, ~(p8001_s & p8008_s), p8010_s);
+
+wire   aso   = p8008_s | ~p8010_s;
+wire   dso   = (p8008_s & p8001_s) | (p8008_s & drw) | ~p8010_s;
 wire   dtack   = sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | cartsel | syncsel | butr | joysel | padr | penr | ~fcsackb;
 assign DTACK_N = ~dtack;
 
 /////////////// BUS ARBITRATION //////////////////
 
-reg    ixdma; // p9021
 wire   ixdmab    = ~ixdma;
 wire   br_n      = BR_N_I & BR_N_O;
 wire   bgack_n   = BGACK_N_I & BGACK_N_O;
 assign BGACK_N_O = ixdmab;
-reg    br_o;  // p9011
 assign BR_N_O    = ~br_o;
 
-reg    p9033;
 wire   p9033_i   = (ready & ~ias) | (p9033 & ias);
-
 wire   ixdma_i   = ixdma | (~ias & ~BG_N);
-
 wire   br_o_i    = (br_n | br_o) & (BG_N | br_o) & p9033 & bgack_n;
 
+// asunc
 `ifdef VERILATOR
-always @(posedge MHZ8, negedge porb, negedge resb) begin
-	if (!porb) p9033 <= 1'b0;
-	else if (!resb) p9033 <= 1'b0;
-	else p9033 <= p9033_i;
 
-	if (!porb) br_o <= 1'b0;
-	else if (!resb) br_o <= 1'b0;
-	else br_o <= br_o_i;
+reg    ixdma_a; // p9021
+reg    p9033_a;
+reg    br_o_a;  // p9011
+
+wire   p9033_i_a = (ready & ~ias) | (p9033_a & ias);
+wire   ixdma_i_a = ixdma_a | (~ias & ~BG_N);
+wire   br_o_i_a  = (br_n | br_o_a) & (BG_N | br_o_a) & p9033_a & bgack_n;
+
+always @(posedge MHZ8, negedge porb, negedge resb) begin
+	if (!porb) p9033_a <= 1'b0;
+	else if (!resb) p9033_a <= 1'b0;
+	else p9033_a <= p9033_i_a;
+
+	if (!porb) br_o_a <= 1'b0;
+	else if (!resb) br_o_a <= 1'b0;
+	else br_o_a <= br_o_i_a;
 end
 
-always @(negedge MHZ8, negedge p9033) begin
-	if (!p9033) ixdma <= 1'b0;
-	else ixdma <= ixdma_i;
+always @(negedge MHZ8, negedge p9033_a) begin
+	if (!p9033_a) ixdma_a <= 1'b0;
+	else ixdma_a <= ixdma_i_a;
 end
 `endif
+
+// sync to clk32
+wire  ixdma;   // p9021
+wire  p9033;
+wire  br_o;    // p9011
+
+register p9033_r(clk32, 0, ~(porb & resb), MHZ8, p9033_i, p9033);
+register br_o_r(clk32, 0, ~(porb & resb), MHZ8, br_o_i, br_o);
+register ixdma_r(clk32, 0, !p9033, ~MHZ8, ixdma_i, ixdma);
 
 ///////// DRAM SIZE/CONFIGURATION DECODES ////////
 
