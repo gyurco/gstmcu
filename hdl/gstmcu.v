@@ -22,7 +22,6 @@
 //============================================================================
 
 // TODO:
-// - DMA
 // - pen, joystick, paddle registers
 // - less useful: refresh address generation
 
@@ -101,6 +100,8 @@ module gstmcu (
     output SLOAD_N,
     output SINT,
 
+    input  viking_at_c0,   // RAM decode for the Viking card at 0xc00000
+    input  viking_at_e8,   // RAM decode for the Viking card at 0xe80000
     output [1:0] bus_cycle // compatibility signal for existing code
 );
 
@@ -177,13 +178,17 @@ assign ROM5_N = ~irom5;
 assign ROM6_N = ~irom6;
 assign ROMP_N = ~romp;
 
+// Not original signals (Viking RAM decodes)
+wire viking_c0 = viking_at_c0 && A[23:18] == 6'b110000; // 256k at 0xc00000
+wire viking_e8 = viking_at_e8 && A[23:19] == 5'b11101;  // 512k at $e80000 for STEroids
+
 wire system = ifc2z | A[15:11] != 0;
 wire irama = |A[21:16];
 wire iramb = fcx & ~A[23] & ~A[22];
 wire iramaa = irama & iramb; // 01xxxxx - 3fxxxxx
 wire iramc = overlap & fcx & system;
 wire iramab = A[23:16] == 0 & iramc;
-wire iram = iramaa | iramab | ~ixdmab | ~resb;
+wire iram = iramaa | iramab | ~ixdmab | viking_c0 | viking_e8 | ~resb;
 assign RAM_N = ~iram;
 
 wire dmadir  = idev & ias & iuds & A[15:1] == { 12'h860, 3'b011 };
@@ -360,7 +365,8 @@ mlatch #(.WIDTH(1)) sndon_l(clk32, 0, (~resb & porb) | stoff, ~wscntlb, id[0], s
 mlatch #(.WIDTH(7)) sft_lll(clk32, 0, (~resb & porb), ~wsftlb, id[7:1], sft_l[ 7: 1]);
 mlatch #(.WIDTH(8)) sft_mll(clk32, 0, (~resb & porb), ~wsftmb, id[7:0], sft_l[15: 8]);
 mlatch #(.WIDTH(6)) sft_hll(clk32, 0, (~resb & porb), ~wsfthb, id[5:0], sft_l[21:16]);
-// load sft when no sound
+// load sft when no sound - originally latches were used, but they create some
+// weird combinatorial loops. Use sync load instead, with a half 16 MHz clock delay.
 //mlatch #(.WIDTH(21)) sft_ll(clk32, 0, ~porb, ~sframe, sft_l, sft);
 always @(posedge clk32) if (~porb) sft <= 0; else if (~sframe) sft <= sft_l;
 
@@ -499,7 +505,7 @@ register ixdma_r(clk32, 0, !p9033, ~MHZ8, ixdma_i, ixdma);
 
 wire sela = rs2b & rs3b;
 wire [3:0] ramaaa = sela ? { ~ADDR[21] & ~ADDR[20], ~ADDR[19], ~ADDR[18], ~ADDR[17] } : { 1'b1, ~ADDR[21], ~ADDR[20], ~ADDR[19] };
-wire ram1 = rs3b ? &ramaaa : ADDR[21];
+wire ram1 = viking_c0 | viking_e8 | (rs3b ? &ramaaa : ADDR[21]);
 wire ram2 = rs3b ? ramaaa[3] & ramaaa[2] & ramaaa[1] & ~ramaaa[0] : ~ADDR[21];
 
 //////////////// RAS GENERATOR ///////////////////
