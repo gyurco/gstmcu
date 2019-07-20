@@ -101,14 +101,13 @@ module gstmcu (
     output SLOAD_N,
     output SINT,
 
-    input [23:1] dma_addr, // until internal dma address counter is done
     output [1:0] bus_cycle // compatibility signal for existing code
 );
 
 ///////// ADDRESS BUS MUX ////////
 always @(*) begin
     casez ({ addrselb, ixdmab, snden, refb })
-        4'b00??: ADDR = dma_addr; // DMA_ADDR
+        4'b00??: ADDR = dmaa; // DMA_ADDR
         4'b01??: ADDR = A; // CPU_ADDR
         4'b1??0: ADDR = 0; // REFRESH_ADDR
         4'b1?11: ADDR = { 2'b0, snd }; // SND DMA ADDR
@@ -262,7 +261,7 @@ wire wsftlb  = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h891, 3'd1 });
 /////////// DATA BUS INTERFACE /////////////
 
 assign DOUT[15:8] = { 6'b111111, idout_h };
-assign DOUT[ 7:0] = vid_o & snd_o;
+assign DOUT[ 7:0] = vid_o & snd_o & dma_o;
 
 /////// SYNC and INTERRUPT INTERFACE ///////
 
@@ -923,6 +922,35 @@ always @(posedge clk32) begin
     if (!(porb & resb)) snd <= 0;
     else if (!sframe) snd <= sfb; // load is async originally, here delayed by half mhz16. Doh.
     else if (sndclk_en) snd <= snd + 1'd1;
+end
+
+//////// DMA ADDRESS COUNTER ////////
+
+wire        dmaclk = ~(dso & ixdma);
+reg  [23:1] dmaa, dma_reg;
+reg         dmaclk_d;
+
+always @(*) begin
+	dmaa = dma_reg;
+	if (~(resb & porb)) dmaa = 0;
+	if (~dmaclk_d & dmaclk) dmaa = dmaa + 1'd1;
+	if (!wdmal) dmaa[ 7: 1] = id[7:1];
+	if (!wdmam) dmaa[15: 8] = id[7:0];
+	if (!wdmah) dmaa[23:16] = id[7:0];
+end
+
+always @(posedge clk32) begin
+	dmaclk_d <= dmaclk;
+	dma_reg <= dmaa;
+end
+
+reg [7:0] dma_o;
+
+always @(*) begin
+	dma_o = 8'hff;
+	if (~rdmalb) dma_o = { dmaa[7:1], 1'b0 };
+	if (~rdmamb) dma_o = dmaa[15:8];
+	if (~rdmahb) dma_o = dmaa[23:16];
 end
 
 endmodule
