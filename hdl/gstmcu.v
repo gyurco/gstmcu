@@ -326,7 +326,7 @@ end
 wire [7:0] hoff;
 mlatch #(.WIDTH(8)) hoff_l(clk32, 0, ~(resb & porb), ~whoffb, id[7:0], hoff);
 wire [21:1] vld;
-mlatch #(.WIDTH(7)) vld_ll(clk32, 0, ~(resb & porb), ~wvidblb, id[7:1], vld[ 7: 1]);
+mlatch #(.WIDTH(7)) vld_ll(clk32, 0, ~(resb & porb & wvidbmb & wvidbhb), ~wvidblb, id[7:1], vld[ 7: 1]);
 mlatch #(.WIDTH(8)) vld_ml(clk32, 0, ~(resb & porb), ~wvidbmb, id[7:0], vld[15: 8]);
 mlatch #(.WIDTH(6)) vld_hl(clk32, 0, ~(resb & porb), ~wvidbhb, id[5:0], vld[21:16]);
 wire [3:0] conf_reg;
