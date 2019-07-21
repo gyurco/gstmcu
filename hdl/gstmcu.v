@@ -42,6 +42,7 @@ module gstmcu (
     output reg [23:1] ADDR, // to RAM
     input  [15:0] DIN,
     output [15:0] DOUT,
+    output CLK_O, // 16 MHz clock, here's an output
     output MHZ8,
     output MHZ8_EN1,
     output MHZ8_EN2,
@@ -537,6 +538,7 @@ wire lcycsel = cycsel;
 wire addrselb = ~addrsel;
 
 assign bus_cycle = { ~time4, ~time0 };
+assign CLK_O = clk;
 
 clockgen clockgen (
     .clk32(clk32),
