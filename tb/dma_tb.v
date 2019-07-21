@@ -6,7 +6,6 @@ module dma_tb (
 	input  RDY_I,
 	output reg RDY_O,
 	input  A1,
-	output [23:1] dma_addr,
 	input  [15:0] DIN,
 	output [15:0] DOUT
 );
@@ -32,13 +31,14 @@ module dma_tb (
 // then send/receive 16 words to/from the bus
 
 always @(posedge clk32) begin
+	reg [7:0] dma_words;
 	reg dma_read, dma_write;
 	reg rdy_d;
 	rdy_d <= RDY_I;
 
 	if (!FCS_N) begin
 		{ dma_read, dma_write } <= 2'b00;
-		dma_addr <= 23'h100;
+		dma_words <= 8'h0;
 		DOUT <= 16'h200;
 		if (A1) begin
 			{ dma_read, dma_write } <= { DIN[9], ~DIN[9] };
@@ -46,11 +46,11 @@ always @(posedge clk32) begin
 		end
 	end else begin
 		if (dma_read | dma_write) begin
-			if (RDY_I && dma_addr < 23'h10f) RDY_O <= 1'b1;
+			if (RDY_I && dma_words < 8'd15) RDY_O <= 1'b1;
 			if (~rdy_d & RDY_I) begin
-				dma_addr <= dma_addr + 1'd1;
+				dma_words <= dma_words + 1'd1;
 				DOUT <= DOUT + 1'd1;
-				if (dma_addr == 23'h10f) begin
+				if (dma_words == 8'd15) begin
 					RDY_O <= 1'b0;
 					{ dma_read, dma_write } <= 2'b00;
 				end

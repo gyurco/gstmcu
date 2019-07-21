@@ -184,11 +184,11 @@ gstmcu gstmcu (
     .SLOAD_N(sload_n),
     .SINT(SINT),
 
-    .dma_addr(dma_addr),
+    .viking_at_e8(1'b0),
+    .viking_at_c0(1'b0),
     .bus_cycle()
 );
 
-wire [23:1] dma_addr;
 wire [15:0] dma_dout;
 
 dma_tb dma_tb (
@@ -199,7 +199,6 @@ dma_tb dma_tb (
     .RDY_I(rdy_n_o),
     .RDY_O(rdy_n_i),
     .A1(A[1]),
-    .dma_addr(dma_addr),
     .DIN(DIN),
     .DOUT(dma_dout)
 );
