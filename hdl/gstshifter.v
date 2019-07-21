@@ -213,16 +213,19 @@ wire   pclk_en = low?t==2'b10:mid?~t[0]:1'b1;
 
 reg [3:0] hcnt;
 reg       hcnt_en;
+reg       data_latched;
 always @(posedge clk32) begin
 	if (!resb) begin
-		hcnt <= 0;
-		hcnt_en <= 0;
+		hcnt <= 4'd0;
+		hcnt_en <= 1'b0;
+		data_latched <= 1'b0;
 	end else begin
-		if (!DE) begin
-			hcnt <= 0;
-			hcnt_en <= 0;
+		if (load_d & ~LOAD_N) data_latched <= 1'b1;
+		if (!DE && hcnt == 4'hf && !data_latched) begin
+			hcnt <= 4'd0;
+			hcnt_en <= 1'b0;
 		end
-		if (DE & !LOAD_N) hcnt_en <= 1;
+		if (DE & !LOAD_N) hcnt_en <= 1'b1;
 		if (pclk_en) begin
 			if (hcnt_en) hcnt <= hcnt  + 1'd1;
 
@@ -234,6 +237,7 @@ always @(posedge clk32) begin
 			// shift all planes and reload 
 			// shift registers every 16 pixels
 			if(hcnt == 4'hf) begin
+				data_latched <= 1'b0;
 				if(!ste || (pixel_offset == 0)) begin
 					shift_0 <= data_latch[0];
 					shift_1 <= data_latch[1];
@@ -268,17 +272,21 @@ always @(posedge clk32) begin
 		plane <= 0;
 	end else begin
 		load_d <= LOAD_N;
-		if (!DE) begin
-			plane <= 0;
-		end else begin
-			if (load_d & ~LOAD_N) begin
+		if (!hcnt_en) plane <= 2'd0;
+		if (load_d & ~LOAD_N) begin
 				data_latch[plane] <= MDIN;
 				// advance plane counter
 				if(planes != 1) begin
 					plane <= plane + 1'd1;
 					if({1'b0, plane} == planes - 1'd1) plane <= 0;
 				end
-			end
+
+				case(plane)
+					2'd0: ste_shift_0 <= { ste_shift_0[15:0], MDIN };
+					2'd1: ste_shift_1 <= { ste_shift_1[15:0], (planes > 3'd1)?MDIN:16'h0000 };
+					2'd2: ste_shift_2 <= { ste_shift_2[15:0], (planes > 3'd2)?MDIN:16'h0000 };
+					2'd3: ste_shift_3 <= { ste_shift_3[15:0], (planes > 3'd2)?MDIN:16'h0000 };
+				endcase
 		end
 	end
 end
@@ -317,18 +325,6 @@ ste_shifter ste_shifter_3 (
 	.in   (ste_shift_3),
 	.out  (ste_shifted_3)
 );
-
-// move data into STE hard scroll shift registers 
-always @(posedge clk32) begin
-	if((load_d & ~LOAD_N) && (plane == 2'd0)) begin
-		// shift up 16 pixels and load new data into lower bits of shift registers
-		ste_shift_0 <= { ste_shift_0[15:0], data_latch[0] };
-		ste_shift_1 <= { ste_shift_1[15:0], (planes > 3'd1)?data_latch[1]:16'h0000 };
-		ste_shift_2 <= { ste_shift_2[15:0], (planes > 3'd2)?data_latch[2]:16'h0000 };
-		ste_shift_3 <= { ste_shift_3[15:0], (planes > 3'd2)?data_latch[3]:16'h0000 };
-	end
-end
-
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////// DMA SOUND ///////////////////////////////
