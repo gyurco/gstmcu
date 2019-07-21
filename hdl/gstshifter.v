@@ -130,6 +130,9 @@ end
 // ---------------------------------------------------------------------------
 // ----------------------------- CPU register write --------------------------
 // ---------------------------------------------------------------------------
+wire write = ~CS_d & CS & ~RW;
+reg CS_d;
+always @(posedge clk32) CS_d <= CS;
 
 always @(posedge clk32) begin
 	if(!resb) begin
@@ -142,7 +145,7 @@ always @(posedge clk32) begin
 
 	end else begin
 		// write registers
-		if(CS && !RW) begin
+		if(write) begin
 
 			// writing special STE registers
 			if(ste) begin
@@ -342,21 +345,21 @@ reg mw_clk;
 reg mw_data;
 reg mw_done;
 
-wire mw_write = CS && !RW && A == 6'h11;
+wire mw_write = write && A == 6'h11;
 wire clk_8_en = (t == 0);
 always @(posedge clk32) begin
 	if(!resb) begin
 		mw_cnt <= 7'h00;        // no micro wire transfer in progress
 	end else begin
 		// sound mode register
-		if(CS && !RW && A == 6'h10) mode <= { MDOUT[7], MDOUT[1:0] };
+		if(write && A == 6'h10) mode <= { MDOUT[7], MDOUT[1:0] };
 		// micro wire has a 16 bit interface
-		if(CS && !RW && A == 6'h12) mw_mask_reg <= MDOUT;
+		if(write && A == 6'h12) mw_mask_reg <= MDOUT;
 	end
 
 	// ----------- micro wire interface -----------
 	// writing the data register triggers the transfer
-	if(clk_8_en && (mw_write || (mw_cnt != 0))) begin
+	if(clk_8_en && (mw_write || mw_cnt != 0)) begin
 
 		// decrease shift counter. Do this before the register write as
 		// register write has priority and should reload the counter
