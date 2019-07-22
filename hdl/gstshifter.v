@@ -302,16 +302,17 @@ wire clk_8_en = (t == 0);
 reg CS8_enD;
 always @(posedge clk32) if (clk_8_en) CS8_enD <= CS;
 
-wire mw_data_write = ~CS8_enD & CS & ~RW && A == 6'h11;
+wire mw_write = ~CS8_enD & CS & ~RW;
+wire mw_data_write = mw_write && A == 6'h11;
 
 always @(posedge clk32) begin
 	if(!resb) begin
 		mw_cnt <= 7'h00;        // no micro wire transfer in progress
-	end else begin
+	end else if (clk_8_en) begin
 		// sound mode register
-		if(write && A == 6'h10) mode <= { MDOUT[7], MDOUT[1:0] };
+		if(mw_write && A == 6'h10) mode <= { MDOUT[7], MDOUT[1:0] };
 		// micro wire has a 16 bit interface
-		if(write && A == 6'h12) mw_mask_reg <= MDOUT;
+		if(mw_write && A == 6'h12) mw_mask_reg <= MDOUT;
 	end
 
 	// ----------- micro wire interface -----------
