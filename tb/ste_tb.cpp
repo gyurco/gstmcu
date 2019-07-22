@@ -52,16 +52,11 @@ void print(bool rise) {
 
 void write_reg(int addr, int data)
 {
-	while (!tb->bus_free) {
-		tick(1);
-		tick(0);
-	}
 	// S0
 	while (!tb->MHZ8_EN1) {
 		tick(1);
 		tick(0);
 	};
-	tb->RW = 1;
 
 	// S1
 	while (!tb->MHZ8_EN2) {
@@ -69,6 +64,11 @@ void write_reg(int addr, int data)
 		tick(0);
 	};
 	tb->A = addr >> 1;
+	while (!tb->bus_free) {
+		tick(1);
+		tick(0);
+	}
+	tb->RW = 1;
 
 	// S2
 	while (!tb->MHZ8_EN1) {
