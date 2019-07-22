@@ -323,12 +323,27 @@ end
 
 ////////////// VIDEO REGISTERS ////////////////
 
+// RS flip-flops on the schematics
+reg wloclb_rs = 1'b0, wlocmb_rs = 1'b0, wlochb_rs = 1'b0;
+always @(posedge clk32) begin
+    if (~frame) { wloclb_rs, wlocmb_rs, wlochb_rs } <= 3'b000;
+    if (~wloclb) wloclb_rs <= 1'b1;
+    if (~wlocmb) wlocmb_rs <= 1'b1;
+    if (~wlochb) wlochb_rs <= 1'b1;
+end
+
+wire [21:1] vld;
+assign vld[21:16] = (~wlochb | wlochb_rs) ? id[5:0] : lvd[21:16];
+assign vld[15: 8] = (~wlocmb | wlocmb_rs) ? id[7:0] : lvd[15: 8];
+assign vld[ 7: 1] = (~wloclb | wloclb_rs) ? id[7:1] : lvd[ 7: 1];
+
 wire [7:0] hoff;
 mlatch #(.WIDTH(8)) hoff_l(clk32, 0, ~(resb & porb), ~whoffb, id[7:0], hoff);
-wire [21:1] vld;
-mlatch #(.WIDTH(7)) vld_ll(clk32, 0, ~(resb & porb & wvidbmb & wvidbhb), ~wvidblb, id[7:1], vld[ 7: 1]);
-mlatch #(.WIDTH(8)) vld_ml(clk32, 0, ~(resb & porb), ~wvidbmb, id[7:0], vld[15: 8]);
-mlatch #(.WIDTH(6)) vld_hl(clk32, 0, ~(resb & porb), ~wvidbhb, id[5:0], vld[21:16]);
+wire [21:1] lvd;
+mlatch #(.WIDTH(7)) lvd_ll(clk32, 0, ~(resb & porb & wvidbmb & wvidbhb), ~wvidblb, id[7:1], lvd[ 7: 1]);
+mlatch #(.WIDTH(8)) lvd_ml(clk32, 0, ~(resb & porb), ~wvidbmb, id[7:0], lvd[15: 8]);
+mlatch #(.WIDTH(6)) lvd_hl(clk32, 0, ~(resb & porb), ~wvidbhb, id[5:0], lvd[21:16]);
+
 wire [3:0] conf_reg;
 mlatch #(.WIDTH(4)) conf_l(clk32, 0, ~(resb & porb), ~wconfigb, id[3:0], conf_reg[3:0]);
 wire rs2b = ~conf_reg[2];
@@ -873,13 +888,16 @@ vidcnt vidcnt (
 //sync to clk32
 reg  [21:1] vid, vid_reg;
 reg vid_r_d, vidclk_d, vidb_d;
+reg frame_d;
 
 reg pf071, pf071_reg;
 
 wire vid_r = pf071 & vidb;
-wire vid_xll = !(!wloclb | !frame);
-wire vid_xlm = !(!wlocmb | !frame);
-wire vid_xlh = !(!wlochb | !frame);
+// there's no evidence on the schematics that load should happen at negative edge of FRAME
+// however always doing load when frame is negative causes visible bugs
+wire vid_xll = !(!wloclb | (frame_d & ~frame));
+wire vid_xlm = !(!wlocmb | (frame_d & ~frame));
+wire vid_xlh = !(!wlochb | (frame_d & ~frame));
 wire vid_rr = ~(!porb | !frame | !wlochb | !wlocmb | !wloclb);
 
 always @(*) begin
@@ -901,6 +919,7 @@ always @(posedge clk32) begin
 	vid_reg <= vid;
 	vidb_d <= vidb;
 	pf071_reg <= pf071;
+	frame_d <= frame;
 end
 
 //////// DMA SOUND COUNTER ////////
