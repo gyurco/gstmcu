@@ -14,15 +14,23 @@ module shifter_video (
 );
 
 // shift array
-
-wire [15:0] shdout0, shdout1, shdout2, shdout3;
-wire [15:0] shcout0, shcout1, shcout2, shcout3;
-genvar i;
-for(i=0; i<16; i=i+1) begin:sharray
-    shifter_cell c3(clk32, pixClkEn, LOAD, Reload, (i == 0) ? shftCin3 : shcout3[i-1], shcout3[i], DIN[i], shdout3[i]);
-    shifter_cell c2(clk32, pixClkEn, LOAD, Reload, (i == 0) ? shftCin2 : shcout2[i-1], shcout2[i], shdout3[i], shdout2[i]);
-    shifter_cell c1(clk32, pixClkEn, LOAD, Reload, (i == 0) ? shftCin1 : shcout1[i-1], shcout1[i], shdout2[i], shdout1[i]);
-    shifter_cell c0(clk32, pixClkEn, LOAD, Reload, (i == 0) ? shftCin0 : shcout0[i-1], shcout0[i], shdout1[i], shdout0[i]);
+reg [15:0] shdout0, shdout1, shdout2, shdout3;
+reg [15:0] shcout0, shcout1, shcout2, shcout3;
+always @(posedge clk32) begin
+	reg loadD;
+	loadD <= LOAD;
+	if (pixClkEn) begin
+		shcout3 <= Reload ? shdout3 : {shcout3[14:0], shftCin3};
+		shcout2 <= Reload ? shdout2 : {shcout2[14:0], shftCin2};
+		shcout1 <= Reload ? shdout1 : {shcout1[14:0], shftCin1};
+		shcout0 <= Reload ? shdout0 : {shcout0[14:0], shftCin0};
+	end
+	if (~loadD & LOAD) begin
+		shdout3 <= DIN;
+		shdout2 <= shdout3;
+		shdout1 <= shdout2;
+		shdout0 <= shdout1;
+	end
 end
 
 // shift array logic
@@ -35,7 +43,7 @@ wire shftCin3  = ~monocolor & rez[1];
 wire shftCin2  = shftCout3 & rez[1] & notlow;
 wire shftCin1  = (shftCout3 & ~rez[1] & notlow) | (shftCout2 & rez[1] & notlow);
 wire shftCin0  = (shftCout2 & ~rez[1] & notlow) | (shftCout1 & rez[1] & notlow);
-wire [3:0] color_index = rez[1] ? { 3'b000, shftCout0 } : rez[0] ? { 2'b00, shftCout1, shftCout0 } : { shftCout3, shftCout2, shftCout1, shftCout0 };
+assign color_index = rez[1] ? { 3'b000, shftCout0 } : rez[0] ? { 2'b00, shftCout1, shftCout0 } : { shftCout3, shftCout2, shftCout1, shftCout0 };
 
 
 // reload control
@@ -73,23 +81,4 @@ always @(posedge clk32) begin
 		else pixCntr <= 4'h4;
 	end;
 end
-endmodule
-
-////////////////////////////////
-
-module shifter_cell (
-    input clk32,
-    input pixClkEn,
-    input LOAD,
-    input Reload,
-    input Shin,
-    output reg Shout,
-    input Din,
-    output Dout
-);
-
-always @(posedge clk32) if (pixClkEn) Shout <= Reload ? Dout : Shin;
-
-register Dout_r(clk32, 0, 0, LOAD, Din, Dout);
-
 endmodule
