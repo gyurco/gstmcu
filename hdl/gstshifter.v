@@ -1,21 +1,24 @@
 //
 // shifter.v
-// 
+//
 // Atari ST(E) shifter implementation for the MiST board
 // http://code.google.com/p/mist-board/
-// 
-// Copyright (c) 2013-2015 Till Harbaum <till@harbaum.org> 
-// 
+//
+// Copyright (c) 2013-2015 Till Harbaum <till@harbaum.org>
+// Copyright (c) 2019 Gyorgy Szombathelyi
+
+// Video shifting engine based on chip decap by Jorge Cwik
+//
 // This source file is free software: you can redistribute it and/or modify 
 // it under the terms of the GNU General Public License as published 
 // by the Free Software Foundation, either version 3 of the License, or 
 // (at your option) any later version. 
-// 
+//
 // This source file is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of 
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License 
 // along with this program.  If not, see <http://www.gnu.org/licenses/>. 
 
@@ -61,22 +64,21 @@ mlatch #(16) dout_l(clk32, 1'b0, 1'b0, LATCH, mbus_in, DOUT);
 
 mlatch #(16) mdout_l(clk32, 1'b0, 1'b0, !WDAT_N, DIN, MDOUT);
 
+// ---------------------------------------------------------------------------
+// ------------------------------ VIDEO SHIFTER ------------------------------
+// ---------------------------------------------------------------------------
 
 // default video mode is 320x200
 parameter DEFAULT_MODE = 2'd0;
 
 assign MONO_OUT = mono;
 // shiftmode register
+/* verilator lint_off UNOPTFLAT */
 reg [1:0] shmode;
+/* verilator lint_on UNOPTFLAT */
 wire mono  = (shmode == 2'd2);
 wire mid   = (shmode == 2'd1);
 wire low   = (shmode == 2'd0);
-
-// derive number of planes from shiftmode
-wire [2:0] planes = mono?3'd1:(mid?3'd2:3'd4);
-
- // data input buffers for up to 4 planes
-reg [15:0] data_latch[4];
 
 // 16 colors with 3*4 bits each (4 bits for STE, ST only uses 3 bits)
 reg [3:0] palette_r[15:0];
@@ -177,18 +179,50 @@ end
 // ---------------------------------------------------------------------------
 // -------------------------- video signal generator -------------------------
 // ---------------------------------------------------------------------------
+reg  [1:0] t;
+always @(posedge clk32, negedge resb)
+	if (!resb) t <= 2'b00; else t <= t + 1'd1;
+
+// clock divider to generate the mid and low rez pixel clocks
+wire   pclk_en = low?t==2'b10:mid?~t[0]:1'b1;
+
+`ifdef VERILATOR
+wire pixClk = low?t[1]:mid?t[0]:clk32;
+shifter_video_async shifter_video_async (
+    .clk32 (clk32),
+    .nReset (resb),
+    .pixClk (pixClk),
+    .DE(DE),
+    .LOAD(~LOAD_N),
+    .rez(shmode),
+    .monocolor(~palette_b[0][0]),
+    .DIN(MDIN),
+//    .color_index(color_index)
+    .color_index()
+);
+`endif
+
+shifter_video shifter_video (
+    .clk32 (clk32),
+    .nReset (resb),
+    .pixClkEn (pclk_en),
+    .DE(DE),
+    .LOAD(~LOAD_N),
+    .rez(shmode),
+    .monocolor(~palette_b[0][0]),
+    .DIN(MDIN),
+//    .color_index()
+    .color_index(color_index)
+);
 
 // ----------------------- monochrome video signal ---------------------------
-// mono uses the lsb of blue palette entry 0 to invert video
-wire [3:0] blue0 = palette_b[0];
-wire mono_bit = blue0[0]^shift_0[15];
-wire [3:0] mono_rgb = { mono_bit, mono_bit, mono_bit, mono_bit };
+wire [3:0] mono_rgb = { 4{color_index[0]} };
 
 // ------------------------- colour video signal -----------------------------
 
 // For ST compatibility reasons the STE has the color bit order 0321. This is 
 // handled here
-wire [3:0] color_index = low ? { shift_3[15], shift_2[15], shift_1[15], shift_0[15] } : { 2'b00, shift_1[15], shift_0[15] };
+wire [3:0] color_index;
 wire [3:0] color_r_pal = palette_r[color_index];
 wire [3:0] color_r = { color_r_pal[2:0], color_r_pal[3] };
 wire [3:0] color_g_pal = palette_g[color_index];
@@ -201,95 +235,18 @@ wire [3:0] stvid_r = mono?mono_rgb:color_r;
 wire [3:0] stvid_g = mono?mono_rgb:color_g;
 wire [3:0] stvid_b = mono?mono_rgb:color_b;
 
-// shift registers for up to 4 planes
-reg [15:0] shift_0, shift_1, shift_2, shift_3;
 
-reg  [1:0] t;
-always @(posedge clk32) t <= t + 1'd1;
-
-// clock divider to generate the mid and low rez pixel clocks
-wire   pclk_en = low?t==2'b10:mid?~t[0]:1'b1;
-// use variable dot clock
-
-reg [3:0] hcnt;
-reg       hcnt_en;
-reg       data_latched;
 always @(posedge clk32) begin
-	if (!resb) begin
-		hcnt <= 4'd0;
-		hcnt_en <= 1'b0;
-		data_latched <= 1'b0;
-	end else begin
-		if (load_d & ~LOAD_N) data_latched <= 1'b1;
-		if (!DE && hcnt == 4'hf && !data_latched) begin
-			hcnt <= 4'd0;
-			hcnt_en <= 1'b0;
-		end
-		if (DE & !LOAD_N) hcnt_en <= 1'b1;
+	if (resb) begin
 		if (pclk_en) begin
-			if (hcnt_en) hcnt <= hcnt  + 1'd1;
-
 			// drive video output
 			R <= (BLANK_N | mono)?stvid_r:4'b0000;
 			G <= (BLANK_N | mono)?stvid_g:4'b0000;
 			B <= (BLANK_N | mono)?stvid_b:4'b0000;
-
-			// shift all planes and reload 
-			// shift registers every 16 pixels
-			if(hcnt == 4'hf) begin
-				data_latched <= 1'b0;
-				if(!ste || (pixel_offset == 0)) begin
-					shift_0 <= data_latch[0];
-					shift_1 <= data_latch[1];
-					shift_2 <= data_latch[2];
-					shift_3 <= data_latch[3];
-				end else begin
-					shift_0 <= ste_shifted_0;
-					shift_1 <= ste_shifted_1;
-					shift_2 <= ste_shifted_2;
-					shift_3 <= ste_shifted_3;
-				end
-			end else begin
-				shift_0 <= { shift_0[14:0], 1'b0 };
-				shift_1 <= { shift_1[14:0], 1'b0 };
-				shift_2 <= { shift_2[14:0], 1'b0 };
-				shift_3 <= { shift_3[14:0], 1'b0 };
-			end
 		end
 	end
 end
 
-reg       load_d;
-reg [1:0] plane;
-
-// ---------------------------------------------------------------------------
-// ----------------------------- Latch data from RAM -------------------------
-// ---------------------------------------------------------------------------
-
-always @(posedge clk32) begin
-
-	if (!resb) begin
-		plane <= 0;
-	end else begin
-		load_d <= LOAD_N;
-		if (!hcnt_en) plane <= 2'd0;
-		if (load_d & ~LOAD_N) begin
-				data_latch[plane] <= MDIN;
-				// advance plane counter
-				if(planes != 1) begin
-					plane <= plane + 1'd1;
-					if({1'b0, plane} == planes - 1'd1) plane <= 0;
-				end
-
-				case(plane)
-					2'd0: ste_shift_0 <= { ste_shift_0[15:0], MDIN };
-					2'd1: ste_shift_1 <= { ste_shift_1[15:0], (planes > 3'd1)?MDIN:16'h0000 };
-					2'd2: ste_shift_2 <= { ste_shift_2[15:0], (planes > 3'd2)?MDIN:16'h0000 };
-					2'd3: ste_shift_3 <= { ste_shift_3[15:0], (planes > 3'd2)?MDIN:16'h0000 };
-				endcase
-		end
-	end
-end
 
 // ---------------------------------------------------------------------------
 // --------------------------- STE hard scroll shifter -----------------------

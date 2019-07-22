@@ -1,6 +1,6 @@
 OBJ_DIR=obj_dir
 VERILATOR_DIR=/usr/share/verilator/include
-HDL_FILES = ../hdl/gstmcu.v ../hdl/clockgen.v ../hdl/mcucontrol.v ../hdl/hsyncgen.v ../hdl/hdegen.v ../hdl/vsyncgen.v ../hdl/vdegen.v ../hdl/vidcnt.v ../hdl/sndcnt.v ../hdl/latch.v ../hdl/register.v ../hdl/modules.v ../hdl/gstshifter.v
+HDL_FILES = ../hdl/gstmcu.v ../hdl/clockgen.v ../hdl/mcucontrol.v ../hdl/hsyncgen.v ../hdl/hdegen.v ../hdl/vsyncgen.v ../hdl/vdegen.v ../hdl/vidcnt.v ../hdl/sndcnt.v ../hdl/latch.v ../hdl/register.v ../hdl/modules.v ../hdl/gstshifter.v ../hdl/shifter_video.v ../hdl/shifter_video_async.v
 
 all: ste_tb
 

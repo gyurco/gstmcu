@@ -6,11 +6,13 @@ module register (
     input s,    // set
     input r,    // reset
     input c,    // write clock
-    input d,    // new value
-    output reg q    // value
+    input [WIDTH-1:0] d,    // new value
+    output reg [WIDTH-1:0] q    // value
 );
 
-reg val_reg;
+parameter WIDTH = 1;
+
+reg [WIDTH-1:0] val_reg;
 reg c_d;
 /*
 always @(posedge c, posedge s, posedge r)
@@ -23,7 +25,6 @@ begin
         q <= d;
 end
 */
-reg q_r;
 
 always @(*) begin
     if (r)
