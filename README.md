@@ -5,6 +5,8 @@ This repository contains a Verilog model of the Atari STE GST MCU (Glue + MMU co
 The model tries to be an exact replica based on the [schematics recovered](https://www.chzsoft.de/asic-web/) by Christian Zietz.
 The code contains both the identical gate-level circuits with asynchronous clocking, and a synchronous model hopefully suitable for FPGA synthesis.
 
+There's a Shifter implementation, too, with both Video and Sound shifting. The core of the video shifter is based on the [reverse engineering](http://www.atari-forum.com/viewtopic.php?t=29658) work by Jorge Cwik.
+
 # Testbench
 
 The tb/ directory contains a testbench, which runs the circuits to generate waveforms for several frames. Also an rgb file is created using a RAM dump.
