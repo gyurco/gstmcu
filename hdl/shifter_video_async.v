@@ -35,7 +35,7 @@ wire shftCin3  = ~monocolor & rez[1];
 wire shftCin2  = shftCout3 & rez[1] & notlow;
 wire shftCin1  = (shftCout3 & ~rez[1] & notlow) | (shftCout2 & rez[1] & notlow);
 wire shftCin0  = (shftCout2 & ~rez[1] & notlow) | (shftCout1 & rez[1] & notlow);
-wire [3:0] color_index = rez[1] ? { 3'b000, shftCout0 } : rez[0] ? { 2'b00, shftCout1, shftCout0 } : { shftCout3, shftCout2, shftCout1, shftCout0 };
+assign color_index = { shftCout3, shftCout2, shftCout1, shftCout0 };
 
 
 // reload control

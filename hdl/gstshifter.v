@@ -158,7 +158,7 @@ always @(posedge clk32) begin
 
 			// the color palette registers, always write bit 3 with zero if not in 
 			// ste mode as this is the lsb of ste
-			if(A >= 6'h20 && A < 6'h30 ) begin
+			if(A[6:5] == 2'b10) begin
 				if(!ste) begin
 					palette_r[A[4:1]] <= { 1'b0, MDOUT[10:8] };
 					palette_g[A[4:1]] <= { 1'b0, MDOUT[ 6:4] };
@@ -216,18 +216,19 @@ shifter_video shifter_video (
 );
 
 // ----------------------- monochrome video signal ---------------------------
-wire [3:0] mono_rgb = { 4{color_index[0]} };
+wire [3:0] mono_rgb = { 4{~color_index[0]} };
 
 // ------------------------- colour video signal -----------------------------
 
 // For ST compatibility reasons the STE has the color bit order 0321. This is 
 // handled here
 wire [3:0] color_index;
-wire [3:0] color_r_pal = palette_r[color_index];
+reg  [3:0] color_addr, color_addr_d, color_addr_d2;
+reg  [3:0] color_r_pal;
 wire [3:0] color_r = { color_r_pal[2:0], color_r_pal[3] };
-wire [3:0] color_g_pal = palette_g[color_index];
+reg  [3:0] color_g_pal;
 wire [3:0] color_g = { color_g_pal[2:0], color_g_pal[3] };
-wire [3:0] color_b_pal = palette_b[color_index];
+reg  [3:0] color_b_pal;
 wire [3:0] color_b = { color_b_pal[2:0], color_b_pal[3] };
 
 // --------------- de-multiplex color and mono into one vga signal -----------
@@ -235,10 +236,16 @@ wire [3:0] stvid_r = mono?mono_rgb:color_r;
 wire [3:0] stvid_g = mono?mono_rgb:color_g;
 wire [3:0] stvid_b = mono?mono_rgb:color_b;
 
-
 always @(posedge clk32) begin
 	if (resb) begin
 		if (pclk_en) begin
+			color_addr <= mid ? { 2'b00, color_index[1:0] } : color_index;
+			color_addr_d <= color_addr;
+			color_addr_d2 <= color_addr_d;
+			color_r_pal <= palette_r[color_addr_d2];
+			color_g_pal <= palette_g[color_addr_d2];
+			color_b_pal <= palette_b[color_addr_d2];
+
 			// drive video output
 			R <= (BLANK_N | mono)?stvid_r:4'b0000;
 			G <= (BLANK_N | mono)?stvid_g:4'b0000;
