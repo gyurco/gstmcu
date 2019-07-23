@@ -278,9 +278,9 @@ assign IPL1_N = MFPINT_N & (hintb | ~vintb);
 assign IPL2_N = MFPINT_N & vintb;
 
 wire hintb;
-register hintb_r(clk32, ~(resb & porb & hclrb), 0, ~iihsync, 0, hintb);
+register hintb_r(clk32, ~(resb & porb & hclrb), 0, iihsync, 0, hintb);
 wire vintb;
-register vintb_r(clk32, ~(resb & porb & vclrb), 0, ~iivsync, 0, vintb);
+register vintb_r(clk32, ~(resb & porb & vclrb), 0, iivsync, 0, vintb);
 
 //////// BUS ERROR GENERATION //////////////
 
@@ -893,11 +893,9 @@ reg frame_d;
 reg pf071, pf071_reg;
 
 wire vid_r = pf071 & vidb;
-// there's no evidence on the schematics that load should happen at negative edge of FRAME
-// however always doing load when frame is negative causes visible bugs
-wire vid_xll = !(!wloclb | (frame_d & ~frame));
-wire vid_xlm = !(!wlocmb | (frame_d & ~frame));
-wire vid_xlh = !(!wlochb | (frame_d & ~frame));
+wire vid_xll = wloclb & frame;
+wire vid_xlm = wlocmb & frame;
+wire vid_xlh = wlochb & frame;
 wire vid_rr = ~(!porb | !frame | !wlochb | !wlocmb | !wloclb);
 
 always @(*) begin
