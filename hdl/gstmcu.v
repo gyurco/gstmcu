@@ -101,6 +101,7 @@ module gstmcu (
     output SLOAD_N,
     output SINT,
 
+    input  tos192k,        // ROM2 decode for 192k TOS area (FC0000-FEFFFF)
     input  viking_at_c0,   // RAM decode for the Viking card at 0xc00000
     input  viking_at_e8,   // RAM decode for the Viking card at 0xe80000
     output [1:0] bus_cycle // compatibility signal for existing code
@@ -160,9 +161,10 @@ wire overlap = |A[15:3];
 wire rvec = irwz & ~overlap & ifc2z & fcx & ixdmab;
 wire rom = irwz & fcx & ixdmab;
 
-wire irom0 = rom & ias & A[23:18] == { 4'hE, 2'b10 }; // E8xxxx-EBxxxx
-wire irom1 = rom & ias & A[23:18] == { 4'hE, 2'b01 }; // E4xxxx-E7xxxx
-wire irom2 = (ias & rvec & A[23:16] == 8'h00) | (rom & ias & A[23:18] == { 4'hE, 2'b00 }); // 0-7, E0xxxx-E3xxxx
+wire irom0 = rom & ias & ~tos192k & A[23:18] == { 4'hE, 2'b10 }; // E8xxxx-EBxxxx
+wire irom1 = rom & ias & ~tos192k & A[23:18] == { 4'hE, 2'b01 }; // E4xxxx-E7xxxx
+wire irom2 = (ias & rvec & A[23:16] == 8'h00) |                 // 0-7
+             (rom & ias & ((~tos192k & A[23:18] == { 4'hE, 2'b00 }) | (tos192k & A[23:18] == { 4'hF, 2'b11 } & A[19:16] != 4'hF))); // E0xxxx-E3xxxx / FC0000-FEFFFF
 wire irom3 = (rom & ias & ~gamecart & A[23:16] == 8'hFB) | (rom & ias & gamecart & A[23:18] == { 4'hD, 2'b11 });
 wire irom4 = (rom & ias & ~gamecart & A[23:16] == 8'hFA) | (rom & ias & gamecart & A[23:18] == { 4'hD, 2'b10 });
 wire irom5 = rom & ias & A[23:18] == { 4'hD, 2'b01 };
@@ -888,7 +890,6 @@ vidcnt vidcnt (
 //sync to clk32
 reg  [21:1] vid, vid_reg;
 reg vid_r_d, vidclk_d, vidb_d;
-reg frame_d;
 
 reg pf071, pf071_reg;
 
