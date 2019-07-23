@@ -918,7 +918,6 @@ always @(posedge clk32) begin
 	vid_reg <= vid;
 	vidb_d <= vidb;
 	pf071_reg <= pf071;
-	frame_d <= frame;
 end
 
 //////// DMA SOUND COUNTER ////////
