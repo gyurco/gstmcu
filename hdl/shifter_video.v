@@ -4,6 +4,7 @@
 module shifter_video (
     input clk32,
     input nReset,
+    input pixClk,
     input pixClkEn,
     input DE,
     input LOAD,
@@ -16,7 +17,7 @@ module shifter_video (
 // shift array
 reg [15:0] shdout0, shdout1, shdout2, shdout3;
 reg [15:0] shcout0, shcout1, shcout2, shcout3;
-always @(posedge clk32) begin
+always @(posedge clk32) begin : shiftarray
 	reg loadD;
 	loadD <= LOAD;
 	if (pixClkEn) begin
@@ -46,38 +47,50 @@ wire shftCin0  = (shftCout2 & ~rez[1] & notlow) | (shftCout1 & rez[1] & notlow);
 assign color_index = { shftCout3, shftCout2, shftCout1, shftCout0 };
 
 // reload control
-wire load_d1;
-register load_d1_r(clk32, 0, !DE, LOAD, 1'b1, load_d1);
+reg Reload;
 
-reg load_d2;
-reg reload_delay_n;
+always @(negedge clk32, negedge nReset) begin : reloadctrl
+	reg pixClk_D;
+	reg LOAD_D;
+	reg Reload_D;
 
-always @(posedge clk32, negedge nReset) begin
-	if (!nReset) reload_delay_n <= 1'b0;
-	else if (pixClkEn) begin
-		reload_delay_n <= ~Reload;
-		load_d2 <= load_d1;
+	reg load_d1, load_d2;
+	reg reload_delay_d;
+	reg [3:0] rdelay;
+	reg [3:0] pixCntr;
+	reg reload_delay_n;
+	reg pxCtrEn;
+
+	// edge detectors
+	pixClk_D <= pixClk;
+	LOAD_D <= LOAD;
+	Reload_D <= Reload;
+
+	if (!nReset) begin
+		reload_delay_n <= 1'b0;
+		pxCtrEn <= 1'b0;
+	end else begin
+		if (~LOAD_D & LOAD) begin
+			load_d1 <= 1'b1;
+			rdelay <= { 1'b1, rdelay[3:1] };
+		end
+
+		if (~pixClk_D & pixClk) begin
+			reload_delay_n <= ~Reload;
+			load_d2 <= load_d1;
+			Reload <= &pixCntr;
+			if (pxCtrEn) pixCntr <= pixCntr + 1'h1;
+			else pixCntr <= 4'h4;
+		end
+
+		else if (Reload_D & ~Reload) pxCtrEn <= load_d2;
+
+		// originally async resets
+		if (!DE) load_d1 <= 1'b0;
+		if (!rdelay[0]) Reload <= 1'b0;
+		if (!reload_delay_n) rdelay <= 4'b0000;
+		if (load_d2) pxCtrEn <= 1'b1;
 	end
 end
 
-wire pxCtrEn;
-register pxCtrEn_r(clk32, load_d2, !nReset, Reload, load_d2, pxCtrEn);
-
-wire [3:0] rdelay;
-register #(4) rdelay_r(clk32, 0, !reload_delay_n, LOAD, { 1'b1, rdelay[3:1] }, rdelay);
-
-reg [3:0] pixCntr;
-reg       Reload;
-
-always @(posedge clk32, negedge rdelay[0]) begin
-	if (!rdelay[0]) Reload <= 1'b0;
-	else if (pixClkEn) Reload <= &pixCntr;
-end
-
-always @(posedge clk32) begin
-	if (pixClkEn) begin
-		if (pxCtrEn) pixCntr <= pixCntr + 1'h1;
-		else pixCntr <= 4'h4;
-	end;
-end
 endmodule

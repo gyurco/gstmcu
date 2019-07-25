@@ -184,10 +184,10 @@ always @(posedge clk32, negedge resb)
 	if (!resb) t <= 2'b00; else t <= t + 1'd1;
 
 // clock divider to generate the mid and low rez pixel clocks
-wire   pclk_en = low?t==2'b01:mid?~t[0]:1'b1;
+wire pixClk = low?t[1]:mid?t[0]:clk32;
+wire pclk_en = low?t==2'b01:mid?~t[0]:1'b1;
 
 `ifdef VERILATOR
-wire pixClk = low?t[1]:mid?t[0]:clk32;
 shifter_video_async shifter_video_async (
     .clk32 (clk32),
     .nReset (resb),
@@ -205,6 +205,7 @@ shifter_video_async shifter_video_async (
 shifter_video shifter_video (
     .clk32 (clk32),
     .nReset (resb),
+    .pixClk (pixClk),
     .pixClkEn (pclk_en),
     .DE(DE),
     .LOAD(LOAD_N),
