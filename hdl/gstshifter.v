@@ -227,6 +227,8 @@ always @(*) begin
 	end
 end
 
+wire reload;
+
 `ifdef VERILATOR
 shifter_video_async shifter_video_async (
     .clk32 (clk32),
@@ -250,7 +252,9 @@ shifter_video shifter_video (
     .LOAD(LOAD_N),
     .rez(shmode),
     .monocolor(~palette_b[0][0]),
+    .scroll(|pixel_offset),
     .DIN(MDIN),
+    .Reload(reload),
 //    .color_index()
     .color_index(color_index)
 );
@@ -301,6 +305,8 @@ end
 // shifted data
 reg [14:0] ste_shifted_0, ste_shifted_1, ste_shifted_2, ste_shifted_3;
 wire [3:0] shifted_color_index;
+reg  [5:0] pix_cntr;
+reg        pix_cntr_en;
 
 always @(posedge clksys) begin
 	if (pclk_en) begin
@@ -308,13 +314,23 @@ always @(posedge clksys) begin
 		ste_shifted_1 <= { color_index[1], ste_shifted_1[14:1] };
 		ste_shifted_2 <= { color_index[2], ste_shifted_2[14:1] };
 		ste_shifted_3 <= { color_index[3], ste_shifted_3[14:1] };
+
+		// mask out "partial" columns at the beginning and at the end when hard scroll is used
+		if ((pix_cntr == 6'h0 && !DE) || (pix_cntr == 6'hf && DE)) pix_cntr_en <= 1'b0;
+		else if (pix_cntr_en) if (DE) pix_cntr <= pix_cntr + 1'd1; else pix_cntr <= pix_cntr - 1'd1;
+		if (pix_cntr == 6'h0 &&  DE && reload) pix_cntr_en <= 1'b1;
+		if (pix_cntr == 6'hf && !DE && reload) begin
+			pix_cntr_en <= 1'b1;
+			if (mid) pix_cntr <= 6'h1f; // 31 pixels after the last reload
+			if (mono) pix_cntr <= 6'h3f; // 63 pixels after the last reload
+		end
 	end
 end
 
-assign shifted_color_index[0] = (pixel_offset == 4'd0) ? color_index[0] : ste_shifted_0[pixel_offset - 1'd1];
-assign shifted_color_index[1] = (pixel_offset == 4'd0) ? color_index[1] : ste_shifted_1[pixel_offset - 1'd1];
-assign shifted_color_index[2] = (pixel_offset == 4'd0) ? color_index[2] : ste_shifted_2[pixel_offset - 1'd1];
-assign shifted_color_index[3] = (pixel_offset == 4'd0) ? color_index[3] : ste_shifted_3[pixel_offset - 1'd1];
+assign shifted_color_index[0] = (pixel_offset == 4'd0) ? color_index[0] : (((pix_cntr == 6'hf && DE) || (pix_cntr != 6'h0 && !DE)) ? ste_shifted_0[pixel_offset - 1'd1] : 1'b0);
+assign shifted_color_index[1] = (pixel_offset == 4'd0) ? color_index[1] : (((pix_cntr == 6'hf && DE) || (pix_cntr != 6'h0 && !DE)) ? ste_shifted_1[pixel_offset - 1'd1] : 1'b0);
+assign shifted_color_index[2] = (pixel_offset == 4'd0) ? color_index[2] : (((pix_cntr == 6'hf && DE) || (pix_cntr != 6'h0 && !DE)) ? ste_shifted_2[pixel_offset - 1'd1] : 1'b0);
+assign shifted_color_index[3] = (pixel_offset == 4'd0) ? color_index[3] : (((pix_cntr == 6'hf && DE) || (pix_cntr != 6'h0 && !DE)) ? ste_shifted_3[pixel_offset - 1'd1] : 1'b0);
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////// DMA SOUND ///////////////////////////////

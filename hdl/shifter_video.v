@@ -11,6 +11,8 @@ module shifter_video (
     input [1:0] rez,
     input monocolor,
     input [15:0] DIN,
+    input scroll,
+    output reg Reload,
     output [3:0] color_index
 );
 
@@ -57,7 +59,6 @@ wire shftCin0  = (shftCout2 & ~rez[1] & notlow) | (shftCout1 & rez[1] & notlow);
 assign color_index = { shftCout3, shftCout2, shftCout1, shftCout0 };
 
 // reload control
-reg Reload;
 always @(posedge clksys, negedge nReset) begin : reloadctrl
 
 	reg load_d1, load_d2;
@@ -86,7 +87,9 @@ always @(posedge clksys, negedge nReset) begin : reloadctrl
 		if (!DE) load_d1 <= 1'b0;
 		if (~reload_delay_n) rdelay <= 4'b0000;
 		if (load_d2) pxCtrEn <= 1'b1;
-		if (!rdelay[0]) Reload <= 1'b0;
+		if (!rdelay[0] && 
+		   !(scroll & !DE)) // mid and hi res leaves 2 or 1 words unloaded when STe hard scroll is used
+			 Reload <= 1'b0;
 	end
 end
 
