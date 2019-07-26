@@ -720,8 +720,9 @@ wire       hblank_set = (cntsc & hdec == 8'd8 ) |  (cpal & hdec == 8'd9);
 wire       hblank_reset = mde1 | hdec == 8'd114;
 
 reg        hde, hde1;
-wire       hde_set   = (cntsc & hdec == 8'd11) | (cpal & hdec == 8'd12) | (mde1 & hdec == 8'd2);
-wire       hde_reset = (cntsc & hdec == 8'd95) | (cpal & hdec == 8'd96) | (mde1 & hdec == 8'd43);
+wire       hde_set_ste = (cntsc & hdec == 8'd11) | (cpal & hdec == 8'd12) | (mde1 & hdec == 8'd2);
+wire       hde_set_st  = (cntsc & hdec == 8'd15) | (cpal & hdec == 8'd16) | (mde1 & hdec == 8'd3);
+wire       hde_reset   = (cntsc & hdec == 8'd95) | (cpal & hdec == 8'd96) | (mde1 & hdec == 8'd43);
 reg        hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4;
 
 always @(posedge clk32, negedge porb) begin
@@ -746,13 +747,14 @@ always @(posedge clk32, negedge porb) begin
 			if (hblank_set) hblank <= 1;
 			if (hblank_reset) hblank <= 0;
 
-			hde_set_r1 <= hde_set;
+			hde_set_r1 <= hde_set_ste;
 			hde_set_r2 <= hde_set_r1;
 			hde_set_r3 <= hde_set_r2;
 			hde_set_r4 <= hde_set_r3;
 			if (hde_reset) hde <= 0;
-			else if ( noscroll && ((~mde1 & hde_set_r4) || (mde1 && hde_set_r1))) hde <= 1;
-			else if (!noscroll && ((~mde0 & hde_set) || (mde0 && hde_set_r2))) hde <= 1;
+			else if (~st &&  noscroll && ((~mde1 & hde_set_r4 ) || (mde1 && hde_set_r1))) hde <= 1;
+			else if (~st && !noscroll && ((~mde0 & hde_set_ste) || (mde0 && hde_set_r2))) hde <= 1;
+			else if ( st && hde_set_st) hde <= 1;
 		end
 	end
 end
