@@ -24,7 +24,6 @@
 
 module gstshifter (
 	input  clk32,
-	input  clksys, // just the multiple of 32MHz
 	input  ste,
 	input  resb,
 
@@ -187,7 +186,12 @@ end
 // ---------------------------------------------------------------------------
 // -------------------------- video signal generator -------------------------
 // ---------------------------------------------------------------------------
+// clock enable divider
+reg  [1:0] t;
+always @(posedge clk32, negedge resb)
+	if (!resb) t <= 2'b00; else t <= t + 1'd1;
 
+/*
 // pix clk divider for 96MHz clksys
 reg [3:0] clk_cnt;
 always @(posedge clksys) begin
@@ -226,10 +230,14 @@ always @(*) begin
 		if (clk_cnt <= 4'd5) pixClk = 1'b1;
 	end
 end
+*/
+wire pclk_en = mono?1'b1:mid?~t[0]:low?t==2'b01:1'b0;
 
 wire reload;
 
 `ifdef VERILATOR
+wire pixClk = mono?clk32:mid?t[0]:low?t[1]:1'b0;
+
 shifter_video_async shifter_video_async (
     .clk32 (clk32),
     .nReset (resb),
@@ -245,9 +253,9 @@ shifter_video_async shifter_video_async (
 `endif
 
 shifter_video shifter_video (
-    .clksys (clksys),
+    .clk32 (clk32),
     .nReset (resb),
-    .pixClk (pixClk),
+    .pixClkEn(pclk_en),
     .DE(DE),
     .LOAD(LOAD_N),
     .rez(shmode),
@@ -280,7 +288,7 @@ wire [3:0] stvid_r = mono?mono_rgb:color_r;
 wire [3:0] stvid_g = mono?mono_rgb:color_g;
 wire [3:0] stvid_b = mono?mono_rgb:color_b;
 
-always @(posedge clksys) begin
+always @(posedge clk32) begin
 	if (resb) begin
 		if (pclk_en) begin
 			color_addr <= mid ? { 2'b00, shifted_color_index[1:0] } : shifted_color_index;
@@ -308,7 +316,7 @@ wire [3:0] shifted_color_index;
 reg  [5:0] pix_cntr;
 reg        pix_cntr_en;
 
-always @(posedge clksys) begin
+always @(posedge clk32) begin
 	if (pclk_en) begin
 		ste_shifted_0 <= { color_index[0], ste_shifted_0[14:1] };
 		ste_shifted_1 <= { color_index[1], ste_shifted_1[14:1] };
@@ -335,11 +343,6 @@ assign shifted_color_index[3] = (pixel_offset == 4'd0) ? color_index[3] : (((pix
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////// DMA SOUND ///////////////////////////////
 //////////////////////////////////////////////////////////////////////////
-
-// clock enable divider
-reg  [1:0] t;
-always @(posedge clk32, negedge resb)
-	if (!resb) t <= 2'b00; else t <= t + 1'd1;
 
 wire clk_8_en = (t == 0);
 

@@ -3,9 +3,8 @@
 
 module shifter_video (
     input clk32,
-    input clksys,
     input nReset,
-    input pixClk,
+    input pixClkEn,
     input DE,
     input LOAD,
     input [1:0] rez,
@@ -17,13 +16,11 @@ module shifter_video (
 );
 
 // edge detectors
-reg pixClk_D;
 reg LOAD_D;
 reg Reload_D;
 
-always @(posedge clksys) begin : edgedetect
+always @(negedge clk32) begin : edgedetect
 	// edge detectors
-	pixClk_D <= pixClk;
 	LOAD_D <= LOAD;
 	Reload_D <= Reload;
 end
@@ -31,8 +28,8 @@ end
 // shift array
 reg [15:0] shdout0, shdout1, shdout2, shdout3;
 reg [15:0] shcout0, shcout1, shcout2, shcout3;
-always @(posedge clksys) begin : shiftarray
-	if (~pixClk_D & pixClk) begin
+always @(negedge clk32) begin : shiftarray
+	if (pixClkEn) begin
 		shcout3 <= Reload ? shdout3 : {shcout3[14:0], shftCin3};
 		shcout2 <= Reload ? shdout2 : {shcout2[14:0], shftCin2};
 		shcout1 <= Reload ? shdout1 : {shcout1[14:0], shftCin1};
@@ -59,7 +56,7 @@ wire shftCin0  = (shftCout2 & ~rez[1] & notlow) | (shftCout1 & rez[1] & notlow);
 assign color_index = { shftCout3, shftCout2, shftCout1, shftCout0 };
 
 // reload control
-always @(posedge clksys, negedge nReset) begin : reloadctrl
+always @(negedge clk32, negedge nReset) begin : reloadctrl
 
 	reg load_d1, load_d2;
 	reg reload_delay_d;
@@ -77,18 +74,20 @@ always @(posedge clksys, negedge nReset) begin : reloadctrl
 			rdelay <= { 1'b1, rdelay[3:1] };
 		end
 		if (Reload_D & ~Reload) pxCtrEn <= load_d2;
-		if (~pixClk_D & pixClk) begin
+		if (pixClkEn) begin
 			load_d2 <= load_d1;
+			if (load_d1) pxCtrEn <= 1'b1; // async set of pxCtrEn from load_d2
 			pixCntr <= pxCtrEn ? pixCntr + 1'h1 : 4'h4;
 			reload_delay_n <= ~Reload;
 			Reload <= &pixCntr;
 		end
 
+		// originally async sets
 		if (!DE) load_d1 <= 1'b0;
 		if (~reload_delay_n) rdelay <= 4'b0000;
-		if (load_d2) pxCtrEn <= 1'b1;
+//		if (load_d2) pxCtrEn <= 1'b1;
 		if (!rdelay[0] && 
-		   !(scroll & !DE)) // mid and hi res leaves 2 or 1 words unloaded when STe hard scroll is used
+		   !(scroll & !DE)) // mid and hi res leave 2 or 1 words unloaded when STe hard scroll is used
 			 Reload <= 1'b0;
 	end
 end
