@@ -24,6 +24,7 @@
 
 module gstshifter (
 	input  clk32,
+	input  clksys, // just the multiple of 32MHz
 	input  ste,
 	input  resb,
 
@@ -103,7 +104,7 @@ always @(*) begin
 		end
 
 		// the color palette registers
-		if(A >= 6'h20 && A < 6'h30 ) begin
+		if(A[6:5] == 2'b10) begin
 			s_dout[ 3:0] = palette_b[A[4:1]];
 			s_dout[ 7:4] = palette_g[A[4:1]];
 			s_dout[11:8] = palette_r[A[4:1]];
@@ -132,13 +133,14 @@ end
 // ---------------------------------------------------------------------------
 // ----------------------------- CPU register write --------------------------
 // ---------------------------------------------------------------------------
-wire write = ~CS_d & CS & ~RW;
+wire write = CS_d & ~CS & ~RW;
 reg CS_d;
 always @(posedge clk32) CS_d <= CS;
 
 always @(posedge clk32) begin
+	reg[1:0] shmode_d, shmode_d2;
 	if(!resb) begin
-		shmode <= DEFAULT_MODE;   // default video mode 2 => mono
+		shmode_d2 <= DEFAULT_MODE;   // default video mode 2 => mono
 
 		// disable STE hard scroll features
 		pixel_offset <= 4'h0;
@@ -146,7 +148,10 @@ always @(posedge clk32) begin
 		palette_b[ 0] <= 4'b111;
 
 	end else begin
-		// write registers
+		// a bit of delay to the shmode register write - Closure demo likes it
+		shmode <= shmode_d;
+		shmode_d <= shmode_d2;
+		// write registers as D Flip-flops
 		if(write) begin
 
 			// writing special STE registers
@@ -155,9 +160,14 @@ always @(posedge clk32) begin
 					pixel_offset <= MDOUT[3:0];
 				end
 			end
+			// make msb writeable if MiST video modes are enabled
+			if(A == 6'h30) shmode_d2 <= MDOUT[9:8];
+		end
 
-			// the color palette registers, always write bit 3 with zero if not in 
-			// ste mode as this is the lsb of ste
+		// the color palette registers, always write bit 3 with zero if not in 
+		// ste mode as this is the lsb of ste
+		// Palette registers are gated latches
+		if (CS & ~RW) begin
 			if(A[6:5] == 2'b10) begin
 				if(!ste) begin
 					palette_r[A[4:1]] <= { 1'b0, MDOUT[10:8] };
@@ -170,8 +180,6 @@ always @(posedge clk32) begin
 				end
 			end
 
-			// make msb writeable if MiST video modes are enabled
-			if(A == 6'h30) shmode <= MDOUT[9:8];
 		end
 	end
 end
@@ -179,15 +187,47 @@ end
 // ---------------------------------------------------------------------------
 // -------------------------- video signal generator -------------------------
 // ---------------------------------------------------------------------------
-reg  [1:0] t;
-always @(posedge clk32, negedge resb)
-	if (!resb) t <= 2'b00; else t <= t + 1'd1;
 
-// clock divider to generate the mid and low rez pixel clocks
-wire   pclk_en = low?t==2'b01:mid?~t[0]:1'b1;
+// pix clk divider for 96MHz clksys
+reg [3:0] clk_cnt;
+always @(posedge clksys) begin
+	if (!resb) clk_cnt <= 4'd0;
+	else if (clk_cnt == 4'd11) clk_cnt <= 4'd0;
+	else clk_cnt <= clk_cnt + 1'd1;
+end
+
+// 0  0000  10  10  10
+// 1  0001  10  10  10
+// 2  0010  01  10  10
+// 3  0011  10  00  10
+// 4  0100  10  00  10
+// 5  0101  01  01  10
+// 6  0110  10  10  00
+// 7  0111  10  10  00
+// 8  1000  01  10  00
+// 9  1001  10  00  00
+//10  1010  10  00  00
+//11  1011  01  01  01
+
+reg pixClk; // don't use it as a clock
+reg pclk_en;
+always @(*) begin
+	pixClk = 1'b0;
+	pclk_en = 1'b0;
+	if (mono)
+		if (clk_cnt == 4'd2 || clk_cnt == 4'd5 || clk_cnt == 4'd8 || clk_cnt == 4'd11) pclk_en = 1'b1;
+		else pixClk = 1'b1;
+	if (mid) begin
+		if (clk_cnt == 4'd5 || clk_cnt == 4'd11) pclk_en = 1'b1;
+		if (clk_cnt == 4'd0 || clk_cnt == 4'd1 || clk_cnt == 4'd2 || clk_cnt == 4'd6 || clk_cnt == 4'd7 || clk_cnt == 4'd8) pixClk = 1'b1;
+	end
+	if (low) begin
+		if (clk_cnt == 4'd11) pclk_en = 1'b1;
+		if (clk_cnt <= 4'd5) pixClk = 1'b1;
+	end
+end
 
 `ifdef VERILATOR
-wire pixClk = low?t[1]:mid?t[0]:clk32;
 shifter_video_async shifter_video_async (
     .clk32 (clk32),
     .nReset (resb),
@@ -203,9 +243,9 @@ shifter_video_async shifter_video_async (
 `endif
 
 shifter_video shifter_video (
-    .clk32 (clk32),
+    .clksys (clksys),
     .nReset (resb),
-    .pixClkEn (pclk_en),
+    .pixClk (pixClk),
     .DE(DE),
     .LOAD(LOAD_N),
     .rez(shmode),
@@ -216,7 +256,7 @@ shifter_video shifter_video (
 );
 
 // ----------------------- monochrome video signal ---------------------------
-wire [3:0] mono_rgb = { 4{~color_index[0]} };
+wire [3:0] mono_rgb = { 4{~shifted_color_index[0]} };
 
 // ------------------------- colour video signal -----------------------------
 
@@ -236,15 +276,14 @@ wire [3:0] stvid_r = mono?mono_rgb:color_r;
 wire [3:0] stvid_g = mono?mono_rgb:color_g;
 wire [3:0] stvid_b = mono?mono_rgb:color_b;
 
-always @(posedge clk32) begin
+always @(posedge clksys) begin
 	if (resb) begin
 		if (pclk_en) begin
-			color_addr <= mid ? { 2'b00, color_index[1:0] } : color_index;
+			color_addr <= mid ? { 2'b00, shifted_color_index[1:0] } : shifted_color_index;
 			color_addr_d <= color_addr;
-			color_addr_d2 <= color_addr_d;
-			color_r_pal <= palette_r[color_addr_d2];
-			color_g_pal <= palette_g[color_addr_d2];
-			color_b_pal <= palette_b[color_addr_d2];
+			color_r_pal <= palette_r[color_addr_d];
+			color_g_pal <= palette_g[color_addr_d];
+			color_b_pal <= palette_b[color_addr_d];
 
 			// drive video output
 			R <= (BLANK_N | mono)?stvid_r:4'b0000;
@@ -259,40 +298,34 @@ end
 // --------------------------- STE hard scroll shifter -----------------------
 // ---------------------------------------------------------------------------
 
-// extra 32 bit registers required for STE hard scrolling
-reg [31:0] ste_shift_0, ste_shift_1, ste_shift_2, ste_shift_3;
-
 // shifted data
-wire [15:0] ste_shifted_0, ste_shifted_1, ste_shifted_2, ste_shifted_3;
+reg [14:0] ste_shifted_0, ste_shifted_1, ste_shifted_2, ste_shifted_3;
+wire [3:0] shifted_color_index;
 
-// connect STE scroll shifters for each plane
-ste_shifter ste_shifter_0 (
-	.skew (pixel_offset),
-	.in   (ste_shift_0),
-	.out  (ste_shifted_0)
-);
+always @(posedge clksys) begin
+	if (pclk_en) begin
+		ste_shifted_0 <= { color_index[0], ste_shifted_0[14:1] };
+		ste_shifted_1 <= { color_index[1], ste_shifted_1[14:1] };
+		ste_shifted_2 <= { color_index[2], ste_shifted_2[14:1] };
+		ste_shifted_3 <= { color_index[3], ste_shifted_3[14:1] };
+	end
+end
 
-ste_shifter ste_shifter_1 (
-	.skew (pixel_offset),
-	.in   (ste_shift_1),
-	.out  (ste_shifted_1)
-);
-
-ste_shifter ste_shifter_2 (
-	.skew (pixel_offset),
-	.in   (ste_shift_2),
-	.out  (ste_shifted_2)
-);
-
-ste_shifter ste_shifter_3 (
-	.skew (pixel_offset),
-	.in   (ste_shift_3),
-	.out  (ste_shifted_3)
-);
+assign shifted_color_index[0] = (pixel_offset == 4'd0) ? color_index[0] : ste_shifted_0[pixel_offset - 1'd1];
+assign shifted_color_index[1] = (pixel_offset == 4'd0) ? color_index[1] : ste_shifted_1[pixel_offset - 1'd1];
+assign shifted_color_index[2] = (pixel_offset == 4'd0) ? color_index[2] : ste_shifted_2[pixel_offset - 1'd1];
+assign shifted_color_index[3] = (pixel_offset == 4'd0) ? color_index[3] : ste_shifted_3[pixel_offset - 1'd1];
 
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////// DMA SOUND ///////////////////////////////
 //////////////////////////////////////////////////////////////////////////
+
+// clock enable divider
+reg  [1:0] t;
+always @(posedge clk32, negedge resb)
+	if (!resb) t <= 2'b00; else t <= t + 1'd1;
+
+wire clk_8_en = (t == 0);
 
 reg [2:0] mode;
 
@@ -305,7 +338,6 @@ reg mw_clk;
 reg mw_data;
 reg mw_done;
 
-wire clk_8_en = (t == 0);
 reg CS8_enD;
 always @(posedge clk32) if (clk_8_en) CS8_enD <= CS;
 
@@ -443,42 +475,6 @@ always @(posedge clk32) begin
 			writeP <= writeP + 1'd1;
 		end
 	end
-end
-
-
-endmodule
-
-// ---------------------------------------------------------------------------
-// --------------------------- STE hard scroll shifter -----------------------
-// ---------------------------------------------------------------------------
-
-module ste_shifter (
-   input  [3:0] skew,
-   input  [31:0] in,
-   output reg [15:0] out
-);
-
-always @(skew, in) begin
-    out = 16'h0000;
-
-   case(skew)
-     15: out =  in[16:1];
-     14: out =  in[17:2];
-     13: out =  in[18:3];
-     12: out =  in[19:4];
-     11: out =  in[20:5];
-     10: out =  in[21:6];
-     9:  out =  in[22:7];
-     8:  out =  in[23:8];
-     7:  out =  in[24:9];
-     6:  out =  in[25:10];
-     5:  out =  in[26:11];
-     4:  out =  in[27:12];
-     3:  out =  in[28:13];
-     2:  out =  in[29:14];
-     1:  out =  in[30:15];
-     0:  out =  in[31:16];
-   endcase; // case (skew)
 end
 
 endmodule
