@@ -135,9 +135,9 @@ always @(posedge clk32) begin
     if (c1_en_p) pk031 <= sndon;
 end
 
-mlatch sframe_l(clk32, 0, !pk031, !clk, ~(pk061 & sfrep), sframe);
+mlatch sframe_l(clk32, 1'b0, !pk031, !clk, ~(pk061 & sfrep), sframe);
 
-mlatch sint_l(clk32, !sintsb, 0, c1_fall, 0, sint);
+mlatch sint_l(clk32, !sintsb, 1'b0, c1_fall, 1'b0, sint);
 //always @(posedge clk32, negedge sintsb) begin
 //    if (!sintsb) sint <= 1;
 //    else if (c1_en_n) sint <= 0;
@@ -149,7 +149,7 @@ always @(posedge clk32, negedge pk031) begin
     else if (c1_en_p) pk024 <= sreq;
 end
 
-mlatch sload_n_l(clk32, !porb, 0, clk, ~(time1 & addrselb & snden), sload_n); // pl031
+mlatch sload_n_l(clk32, !porb, 1'b0, clk, ~(time1 & addrselb & snden), sload_n); // pl031
 
 ///////////////////// RAM/SHIFTER ////////////////
 
@@ -189,7 +189,7 @@ always @(posedge clk32, negedge ramsel) begin
 end
 
 wire dcyc;
-mlatch dcyc_l(clk32, !porb, 0, clk, !resb | (time1 & addrselb & viden), dcyc); // pl025
+mlatch dcyc_l(clk32, !porb, 1'b0, clk, !resb | (time1 & addrselb & viden), dcyc); // pl025
 
 /////
 

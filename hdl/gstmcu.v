@@ -281,9 +281,9 @@ assign IPL1_N = MFPINT_N & (hintb | ~vintb);
 assign IPL2_N = MFPINT_N & vintb;
 
 wire hintb;
-register hintb_r(clk32, ~(resb & porb & hclrb), 0, iihsync, 0, hintb);
+register hintb_r(clk32, ~(resb & porb & hclrb), 1'b0, iihsync, 1'b0, hintb);
 wire vintb;
-register vintb_r(clk32, ~(resb & porb & vclrb), 0, iivsync, 0, vintb);
+register vintb_r(clk32, ~(resb & porb & vclrb), 1'b0, iivsync, 1'b0, vintb);
 
 //////// BUS ERROR GENERATION //////////////
 
@@ -299,18 +299,18 @@ end
 //////// DMA/VIDEO REGISTERS ///////////////
 
 wire gamecart;
-register gamecart_r(clk32, 0, ~(resb & porb), irwb & cartsel & iuds, id[8], gamecart);
+register gamecart_r(clk32, 1'b0, ~(resb & porb), irwb & cartsel & iuds, id[8], gamecart);
 wire noscroll;
-mlatch noscroll_l(clk32, ~(resb & porb), 0, scrlsel, ~|id[3:0], noscroll);
+mlatch noscroll_l(clk32, ~(resb & porb), 1'b0, scrlsel, ~|id[3:0], noscroll);
 wire mde1;
-register mde1_r(clk32, 0, ~(resb & porb), ~(irwb & mdesel & iuds), id[9], mde1);
+register mde1_r(clk32, 1'b0, ~(resb & porb), ~(irwb & mdesel & iuds), id[9], mde1);
 wire mde0;
-register mde0_r(clk32, 0, ~(resb & porb), ~(irwb & mdesel & iuds), id[8], mde0);
+register mde0_r(clk32, 1'b0, ~(resb & porb), ~(irwb & mdesel & iuds), id[8], mde0);
 wire pal;
-register pal_r(clk32, 0, ~(resb & porb), ~(irwb & syncsel & iuds), id[9], pal);
+register pal_r(clk32, 1'b0, ~(resb & porb), ~(irwb & syncsel & iuds), id[9], pal);
 wire ntsc = ~pal;
 wire drw;
-register drw_r(clk32, ~(resb & porb), 0, dmadirb, id[8], drw);
+register drw_r(clk32, ~(resb & porb), 1'b0, dmadirb, id[8], drw);
 
 wire penr = iuds & ilds & irwz & pensel;
 wire padr = ilds & irwz & padsel;
@@ -341,14 +341,14 @@ assign vld[15: 8] = (~wlocmb | wlocmb_rs) ? id[7:0] : lvd[15: 8];
 assign vld[ 7: 1] = (~wloclb | wloclb_rs) ? id[7:1] : lvd[ 7: 1];
 
 wire [7:0] hoff;
-mlatch #(.WIDTH(8)) hoff_l(clk32, 0, ~(resb & porb), ~whoffb, id[7:0], hoff);
+mlatch #(.WIDTH(8)) hoff_l(clk32, 1'b0, ~(resb & porb), ~whoffb, id[7:0], hoff);
 wire [21:1] lvd;
-mlatch #(.WIDTH(7)) lvd_ll(clk32, 0, ~(resb & porb & wvidbmb & wvidbhb), ~wvidblb, id[7:1], lvd[ 7: 1]);
-mlatch #(.WIDTH(8)) lvd_ml(clk32, 0, ~(resb & porb), ~wvidbmb, id[7:0], lvd[15: 8]);
-mlatch #(.WIDTH(6)) lvd_hl(clk32, 0, ~(resb & porb), ~wvidbhb, id[5:0], lvd[21:16]);
+mlatch #(.WIDTH(7)) lvd_ll(clk32, 1'b0, ~(resb & porb & wvidbmb & wvidbhb), ~wvidblb, id[7:1], lvd[ 7: 1]);
+mlatch #(.WIDTH(8)) lvd_ml(clk32, 1'b0, ~(resb & porb), ~wvidbmb, id[7:0], lvd[15: 8]);
+mlatch #(.WIDTH(6)) lvd_hl(clk32, 1'b0, ~(resb & porb), ~wvidbhb, id[5:0], lvd[21:16]);
 
 wire [3:0] conf_reg;
-mlatch #(.WIDTH(4)) conf_l(clk32, 0, ~(resb & porb), ~wconfigb, id[3:0], conf_reg[3:0]);
+mlatch #(.WIDTH(4)) conf_l(clk32, 1'b0, ~(resb & porb), ~wconfigb, id[3:0], conf_reg[3:0]);
 wire rs2b = ~conf_reg[2];
 wire rs3b = ~conf_reg[3];
 
@@ -374,16 +374,16 @@ wire  [3:1] snd_ctrl;
 wire sndon;
 wire sfrep = snd_ctrl[1];
 
-mlatch #(.WIDTH(7)) sfb_ll(clk32, 0, (~resb & porb), ~wsfblb, id[7:1], sfb[ 7: 1]);
-mlatch #(.WIDTH(8)) sfb_ml(clk32, 0, (~resb & porb), ~wsfbmb, id[7:0], sfb[15: 8]);
-mlatch #(.WIDTH(6)) sfb_hl(clk32, 0, (~resb & porb), ~wsfbhb, id[5:0], sfb[21:16]);
-mlatch #(.WIDTH(3)) sctl_l(clk32, 0, (~resb & porb), ~wscntlb, id[3:1], snd_ctrl);
-mlatch #(.WIDTH(1)) sndon_l(clk32, 0, (~resb & porb) | stoff, ~wscntlb, id[0], sndon);
+mlatch #(.WIDTH(7)) sfb_ll(clk32, 1'b0, (~resb & porb), ~wsfblb, id[7:1], sfb[ 7: 1]);
+mlatch #(.WIDTH(8)) sfb_ml(clk32, 1'b0, (~resb & porb), ~wsfbmb, id[7:0], sfb[15: 8]);
+mlatch #(.WIDTH(6)) sfb_hl(clk32, 1'b0, (~resb & porb), ~wsfbhb, id[5:0], sfb[21:16]);
+mlatch #(.WIDTH(3)) sctl_l(clk32, 1'b0, (~resb & porb), ~wscntlb, id[3:1], snd_ctrl);
+mlatch #(.WIDTH(1)) sndon_l(clk32, 1'b0, (~resb & porb) | stoff, ~wscntlb, id[0], sndon);
 
 // latch sft register writes
-mlatch #(.WIDTH(7)) sft_lll(clk32, 0, (~resb & porb), ~wsftlb, id[7:1], sft_l[ 7: 1]);
-mlatch #(.WIDTH(8)) sft_mll(clk32, 0, (~resb & porb), ~wsftmb, id[7:0], sft_l[15: 8]);
-mlatch #(.WIDTH(6)) sft_hll(clk32, 0, (~resb & porb), ~wsfthb, id[5:0], sft_l[21:16]);
+mlatch #(.WIDTH(7)) sft_lll(clk32, 1'b0, (~resb & porb), ~wsftlb, id[7:1], sft_l[ 7: 1]);
+mlatch #(.WIDTH(8)) sft_mll(clk32, 1'b0, (~resb & porb), ~wsftmb, id[7:0], sft_l[15: 8]);
+mlatch #(.WIDTH(6)) sft_hll(clk32, 1'b0, (~resb & porb), ~wsfthb, id[5:0], sft_l[21:16]);
 // load sft when no sound - originally latches were used, but they create some
 // weird combinatorial loops. Use sync load instead, with a half 16 MHz clock delay.
 //mlatch #(.WIDTH(21)) sft_ll(clk32, 0, ~porb, ~sframe, sft_l, sft);
@@ -459,13 +459,13 @@ end
 `endif
 
 wire fcsackb;
-register fcsackb_r(clk32, ~(porb & ias), 0, ready, ifcsb, fcsackb);
+register fcsackb_r(clk32, ~(porb & ias), 1'b0, ready, ifcsb, fcsackb);
 
 wire dtack_d, p8001_s, p8008_s, p8010_s;
-register dtack_d_r(clk32, 0, !porb, ~MHZ8, dtack, dtack_d); // p8006
-register p8001_r(clk32, 0, ~(porb & ixdma), MHZ8, p8008_s, p8001_s);
-register p8008_r(clk32, 0, ~(porb & ixdma), MHZ8, p8001_s ^ ~(p8008_s & p8001_s & ~dtack_d), p8008_s);
-register p8010_r(clk32, ~(porb & ixdma), 0, ~MHZ8, ~(p8001_s & p8008_s), p8010_s);
+register dtack_d_r(clk32, 1'b0, !porb, ~MHZ8, dtack, dtack_d); // p8006
+register p8001_r(clk32, 1'b0, ~(porb & ixdma), MHZ8, p8008_s, p8001_s);
+register p8008_r(clk32, 1'b0, ~(porb & ixdma), MHZ8, p8001_s ^ ~(p8008_s & p8001_s & ~dtack_d), p8008_s);
+register p8010_r(clk32, ~(porb & ixdma), 1'b0, ~MHZ8, ~(p8001_s & p8008_s), p8010_s);
 
 wire   aso   = p8008_s | ~p8010_s;
 wire   dso   = (p8008_s & p8001_s) | (p8008_s & drw) | ~p8010_s;
@@ -516,9 +516,9 @@ wire  ixdma;   // p9021
 wire  p9033;
 wire  br_o;    // p9011
 
-register p9033_r(clk32, 0, ~(porb & resb), MHZ8, p9033_i, p9033);
-register br_o_r(clk32, 0, ~(porb & resb), MHZ8, br_o_i, br_o);
-register ixdma_r(clk32, 0, !p9033, ~MHZ8, ixdma_i, ixdma);
+register p9033_r(clk32, 1'b0, ~(porb & resb), MHZ8, p9033_i, p9033);
+register br_o_r(clk32, 1'b0, ~(porb & resb), MHZ8, br_o_i, br_o);
+register ixdma_r(clk32, 1'b0, !p9033, ~MHZ8, ixdma_i, ixdma);
 
 ///////// DRAM SIZE/CONFIGURATION DECODES ////////
 
@@ -532,10 +532,10 @@ wire ram2 = rs3b ? ramaaa[3] & ramaaa[2] & ramaaa[1] & ~ramaaa[0] : ~ADDR[21];
 wire ram1a, ram2a;
 wire udsl, ldsl;
 
-mlatch ram1a_l(clk32, 0, !porb, clk4, ram1, ram1a);
-mlatch ram2a_l(clk32, 0, !porb, clk4, ram2, ram2a);
-mlatch ldsl_l (clk32, 0, !porb, clk4, ilds, ldsl);
-mlatch udsl_l (clk32, 0, !porb, clk4, iuds, udsl);
+mlatch ram1a_l(clk32, 1'b0, !porb, clk4, ram1, ram1a);
+mlatch ram2a_l(clk32, 1'b0, !porb, clk4, ram2, ram2a);
+mlatch ldsl_l (clk32, 1'b0, !porb, clk4, ilds, ldsl);
+mlatch udsl_l (clk32, 1'b0, !porb, clk4, iuds, udsl);
 
 assign RAS0_N = ~( (time0 & addrselb & (~refb | (ram1a & vos))) | (~time0 & addrsel & ram1a & ~ramcycb) );
 assign RAS1_N = ~( (time0 & addrselb & (~refb | (ram2a & vos))) | (~time0 & addrsel & ram2a & ~ramcycb) );
