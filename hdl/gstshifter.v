@@ -191,46 +191,6 @@ reg  [1:0] t;
 always @(posedge clk32, negedge resb)
 	if (!resb) t <= 2'b00; else t <= t + 1'd1;
 
-/*
-// pix clk divider for 96MHz clksys
-reg [3:0] clk_cnt;
-always @(posedge clksys) begin
-	if (!resb) clk_cnt <= 4'd0;
-	else if (clk_cnt == 4'd11) clk_cnt <= 4'd0;
-	else clk_cnt <= clk_cnt + 1'd1;
-end
-
-// 0  0000  10  10  10
-// 1  0001  10  10  10
-// 2  0010  01  10  10
-// 3  0011  10  00  10
-// 4  0100  10  00  10
-// 5  0101  01  01  10
-// 6  0110  10  10  00
-// 7  0111  10  10  00
-// 8  1000  01  10  00
-// 9  1001  10  00  00
-//10  1010  10  00  00
-//11  1011  01  01  01
-
-reg pixClk; // don't use it as a clock
-reg pclk_en;
-always @(*) begin
-	pixClk = 1'b0;
-	pclk_en = 1'b0;
-	if (mono)
-		if (clk_cnt == 4'd2 || clk_cnt == 4'd5 || clk_cnt == 4'd8 || clk_cnt == 4'd11) pclk_en = 1'b1;
-		else pixClk = 1'b1;
-	if (mid) begin
-		if (clk_cnt == 4'd5 || clk_cnt == 4'd11) pclk_en = 1'b1;
-		if (clk_cnt == 4'd0 || clk_cnt == 4'd1 || clk_cnt == 4'd2 || clk_cnt == 4'd6 || clk_cnt == 4'd7 || clk_cnt == 4'd8) pixClk = 1'b1;
-	end
-	if (low) begin
-		if (clk_cnt == 4'd11) pclk_en = 1'b1;
-		if (clk_cnt <= 4'd5) pixClk = 1'b1;
-	end
-end
-*/
 wire pclk_en = mono?1'b1:mid?~t[0]:low?t==2'b01:1'b0;
 
 wire reload;
