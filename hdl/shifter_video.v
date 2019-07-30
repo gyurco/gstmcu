@@ -19,7 +19,7 @@ module shifter_video (
 reg LOAD_D;
 reg Reload_D;
 
-always @(negedge clk32) begin : edgedetect
+always @(posedge clk32) begin : edgedetect
 	// edge detectors
 	LOAD_D <= LOAD;
 	Reload_D <= Reload;
@@ -56,23 +56,34 @@ wire shftCin0  = (shftCout2 & ~rez[1] & notlow) | (shftCout1 & rez[1] & notlow);
 assign color_index = { shftCout3, shftCout2, shftCout1, shftCout0 };
 
 // reload control
-always @(negedge clk32, negedge nReset) begin : reloadctrl
+reg        load_d1_reg;
+reg        load_d1;
+reg  [3:0] rdelay_reg;
+reg  [3:0] rdelay;
+reg        reload_delay_n;
 
-	reg load_d1, load_d2;
+always @(*) begin
+    load_d1 = load_d1_reg;
+
+    if (!DE) load_d1 = 1'b0;
+    else if (~LOAD_D & LOAD) load_d1 = 1'b1;
+
+    rdelay = rdelay_reg;
+    if (~reload_delay_n) rdelay = 4'b0000;
+    else if (~LOAD_D & LOAD) rdelay = { 1'b1, rdelay[3:1] };
+end
+
+always @(posedge clk32, negedge nReset) begin : reloadctrl
+
+	reg load_d2;
 	reg reload_delay_d;
-	reg [3:0] rdelay;
 	reg [3:0] pixCntr;
-	reg reload_delay_n;
 	reg pxCtrEn;
 
 	if (!nReset) begin
 		reload_delay_n <= 1'b0;
 		pxCtrEn <= 1'b0;
 	end else begin
-		if (~LOAD_D & LOAD) begin
-			load_d1 <= 1'b1;
-			rdelay <= { 1'b1, rdelay[3:1] };
-		end
 		if (Reload_D & ~Reload) pxCtrEn <= load_d2;
 		if (pixClkEn) begin
 			load_d2 <= load_d1;
@@ -83,12 +94,12 @@ always @(negedge clk32, negedge nReset) begin : reloadctrl
 		end
 
 		// originally async sets
-		if (!DE) load_d1 <= 1'b0;
-		if (~reload_delay_n) rdelay <= 4'b0000;
-//		if (load_d2) pxCtrEn <= 1'b1;
 		if (!rdelay[0] && 
 		   !(scroll & !DE)) // mid and hi res leave 2 or 1 words unloaded when STe hard scroll is used
 			 Reload <= 1'b0;
+
+		load_d1_reg <= load_d1;
+		rdelay_reg <= rdelay;
 	end
 end
 
