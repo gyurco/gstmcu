@@ -137,9 +137,9 @@ reg CS_d;
 always @(posedge clk32) CS_d <= CS;
 
 always @(posedge clk32) begin
-	reg[1:0] shmode_d, shmode_d2;
+	reg[1:0] shmode_d;
 	if(!resb) begin
-		shmode_d2 <= DEFAULT_MODE;   // default video mode 2 => mono
+		shmode_d <= DEFAULT_MODE;   // default video mode 2 => mono
 
 		// disable STE hard scroll features
 		pixel_offset <= 4'h0;
@@ -149,7 +149,6 @@ always @(posedge clk32) begin
 	end else begin
 		// a bit of delay to the shmode register write - Closure demo likes it
 		shmode <= shmode_d;
-		shmode_d <= shmode_d2;
 		// write registers as D Flip-flops
 		if(write) begin
 
@@ -160,7 +159,7 @@ always @(posedge clk32) begin
 				end
 			end
 			// make msb writeable if MiST video modes are enabled
-			if(A == 6'h30) shmode_d2 <= MDOUT[9:8];
+			if(A == 6'h30) shmode_d <= MDOUT[9:8];
 		end
 
 		// the color palette registers, always write bit 3 with zero if not in 
@@ -253,9 +252,10 @@ always @(posedge clk32) begin
 		if (pclk_en) begin
 			color_addr <= mid ? { 2'b00, shifted_color_index[1:0] } : shifted_color_index;
 			color_addr_d <= color_addr;
-			color_r_pal <= palette_r[color_addr_d];
-			color_g_pal <= palette_g[color_addr_d];
-			color_b_pal <= palette_b[color_addr_d];
+			color_addr_d2 <= color_addr_d;
+			color_r_pal <= palette_r[color_addr_d2];
+			color_g_pal <= palette_g[color_addr_d2];
+			color_b_pal <= palette_b[color_addr_d2];
 
 			// drive video output
 			R <= (BLANK_N | mono)?stvid_r:4'b0000;
