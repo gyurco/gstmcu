@@ -41,7 +41,7 @@ always @(posedge clk32) begin
 		dma_words <= 8'h0;
 		DOUT <= 16'h200;
 		if (A1) begin
-			{ dma_read, dma_write } <= { DIN[9], ~DIN[9] };
+			{ dma_read, dma_write } <= { DIN[8], ~DIN[8] };
 			RDY_O <= 1'b1;
 		end
 	end else begin

@@ -313,8 +313,8 @@ int main(int argc, char **argv) {
 	write_reg(0xff825e, 0x0ff3);
 
 //	memtest();
-
-	write_reg(0xff8606, 0x0); // dma write test
+	write_reg(0xff860c, 0x0020); // dma addr lo
+	write_reg(0xff8606, 0x0000); // dma write test
 
 
 //	write_reg(0xff820e, 0x0050); // horizontal offset
@@ -324,7 +324,8 @@ int main(int argc, char **argv) {
 	std::cout << std::hex << "ram 0x0ffff (0xaaaa): " << std::hex << read_reg(0xffff) << std::endl;
 	std::cout << std::hex << "shmode 0xff8260: " << std::hex << read_reg(0xff8260) << std::endl;
 
-	write_reg(0xff8606, 0x100); // dma read test
+	write_reg(0xff860c, 0x0020); // dma addr lo
+	write_reg(0xff8606, 0x0100); // dma read test
 
 	write_reg(0xff8800, 0); //write to AY
 //	write_reg(0xff8264, 0x00aa); //write to hscroll
