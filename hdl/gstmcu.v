@@ -102,6 +102,7 @@ module gstmcu (
     output SINT,
 
     input  st,             // Atari ST compatibilty (mask STe registers)
+    input  extra_ram,      // Allow > 4MB RAM (for CPU, Video and DMA)
     input  tos192k,        // ROM2 decode for 192k TOS area (FC0000-FEFFFF)
     input  viking_at_c0,   // RAM decode for the Viking card at 0xc00000
     input  viking_at_e8,   // RAM decode for the Viking card at 0xe80000
@@ -115,7 +116,7 @@ always @(*) begin
         4'b01??: ADDR = A; // CPU_ADDR
         4'b1??0: ADDR = 0; // REFRESH_ADDR
         4'b1?11: ADDR = { 2'b0, snd }; // SND DMA ADDR
-        4'b1?01: ADDR = { 2'b0, vid }; // VIDEO ADDR
+        4'b1?01: ADDR = vid; // VIDEO ADDR
     endcase
 end
 
@@ -186,13 +187,16 @@ assign ROMP_N = ~romp;
 wire viking_c0 = viking_at_c0 && A[23:18] == 6'b110000; // 256k at 0xc00000
 wire viking_e8 = viking_at_e8 && A[23:19] == 5'b11101;  // 512k at $e80000 for STEroids
 
+// Extra ram(4MB-14MB) enable
+wire iram_extra = fcx & extra_ram & (~A[23] | ~A[22] | (A[23] & A[22] & ~A[21]));
+
 wire system = ifc2z | A[15:11] != 0;
 wire irama = |A[21:16];
 wire iramb = fcx & ~A[23] & ~A[22];
 wire iramaa = irama & iramb; // 01xxxxx - 3fxxxxx
 wire iramc = overlap & fcx & system;
 wire iramab = A[23:16] == 0 & iramc;
-wire iram = iramaa | iramab | ~ixdmab | viking_c0 | viking_e8 | ~resb;
+wire iram = iramaa | iramab | ~ixdmab | viking_c0 | viking_e8 | iram_extra | ~resb;
 assign RAM_N = ~iram;
 
 wire dmadir  = idev & ias & iuds & A[15:1] == { 12'h860, 3'b011 };
@@ -335,17 +339,18 @@ always @(posedge clk32) begin
     if (~wlochb) wlochb_rs <= 1'b1;
 end
 
-wire [21:1] vld;
+wire [23:1] vld;
+assign vld[23:22] = extra_ram ? ((~wlochb | wlochb_rs)? id[7:6] : lvd[23:22]) : 2'b00;
 assign vld[21:16] = (~wlochb | wlochb_rs) ? id[5:0] : lvd[21:16];
 assign vld[15: 8] = (~wlocmb | wlocmb_rs) ? id[7:0] : lvd[15: 8];
 assign vld[ 7: 1] = (~wloclb | wloclb_rs) ? id[7:1] : lvd[ 7: 1];
 
 wire [7:0] hoff;
 mlatch #(.WIDTH(8)) hoff_l(clk32, 1'b0, ~(resb & porb), ~whoffb, id[7:0], hoff);
-wire [21:1] lvd;
+wire [23:1] lvd;
 mlatch #(.WIDTH(7)) lvd_ll(clk32, 1'b0, ~(resb & porb & wvidbmb & wvidbhb), ~wvidblb, id[7:1], lvd[ 7: 1]);
 mlatch #(.WIDTH(8)) lvd_ml(clk32, 1'b0, ~(resb & porb), ~wvidbmb, id[7:0], lvd[15: 8]);
-mlatch #(.WIDTH(6)) lvd_hl(clk32, 1'b0, ~(resb & porb), ~wvidbhb, id[5:0], lvd[21:16]);
+mlatch #(.WIDTH(8)) lvd_hl(clk32, 1'b0, ~(resb & porb), ~wvidbhb, id[7:0], lvd[23:16]);
 
 wire [3:0] conf_reg;
 mlatch #(.WIDTH(4)) conf_l(clk32, 1'b0, ~(resb & porb), ~wconfigb, id[3:0], conf_reg[3:0]);
@@ -357,13 +362,13 @@ reg [7:0] vid_o;
 always @(*) begin
 	vid_o = 8'hff;
 	if (~rhoffb)   vid_o = hoff;
-	if (~rvidblb)  vid_o = { vld[7:1], 1'b0 };
-	if (~rvidbmb)  vid_o = vld[15:8];
-	if (~rvidbhb)  vid_o = { 2'b00, vld[21:16] };
+	if (~rvidblb)  vid_o = { lvd[7:1], 1'b0 };
+	if (~rvidbmb)  vid_o = lvd[15:8];
+	if (~rvidbhb)  vid_o = { extra_ram ? lvd[23:22] : 2'b00, lvd[21:16] };
 	if (~rconfigb) vid_o = { 4'b0000, conf_reg };
 	if (~rloclb)   vid_o = { vid[7:1], 1'b0 };
 	if (~rlocmb)   vid_o = vid[15:8];
-	if (~rlochb)   vid_o = { 2'b00, vid[21:16] };
+	if (~rlochb)   vid_o = vid[23:16];
 end
 
 ////////////// SOUND REGISTERS ////////////////
@@ -524,7 +529,7 @@ register ixdma_r(clk32, 1'b0, !p9033, ~MHZ8, ixdma_i, ixdma);
 
 wire sela = rs2b & rs3b;
 wire [3:0] ramaaa = sela ? { ~ADDR[21] & ~ADDR[20], ~ADDR[19], ~ADDR[18], ~ADDR[17] } : { 1'b1, ~ADDR[21], ~ADDR[20], ~ADDR[19] };
-wire ram1 = viking_c0 | viking_e8 | (rs3b ? &ramaaa : ADDR[21]);
+wire ram1 = (extra_ram & (~ADDR[23] | ~ADDR[22] | (ADDR[23] & ADDR[22] & ~ADDR[21]))) | viking_c0 | viking_e8 | (rs3b ? &ramaaa : ADDR[21]);
 wire ram2 = rs3b ? ramaaa[3] & ramaaa[2] & ramaaa[1] & ~ramaaa[0] : ~ADDR[21];
 
 //////////////// RAS GENERATOR ///////////////////
@@ -880,7 +885,7 @@ vidcnt vidcnt (
     .vidb(vidb),
     .vidclkb(vidclkb),
     .hoff(hoff),
-    .vld(vld),
+    .vld(vld[21:1]),
     .frame(frame),
     .wloclb(wloclb),
     .wlocmb(wlocmb),
@@ -891,7 +896,7 @@ vidcnt vidcnt (
 `endif
 
 //sync to clk32
-reg  [21:1] vid, vid_reg;
+reg  [23:1] vid, vid_reg;
 reg vid_r_d, vidclk_d, vidb_d;
 
 reg pf071, pf071_reg;
@@ -904,11 +909,12 @@ wire vid_rr = ~(!porb | !frame | !wlochb | !wlocmb | !wloclb);
 
 always @(*) begin
 	vid = vid_reg;
-	if (~vid_r_d & vid_r) vid = vid + {13 'd0, hoff };
+	if (~vid_r_d & vid_r) vid = vid + {15'd0, hoff };
 	else if (~vidclk_d & ~vidclkb) vid = vid_reg + 1'd1;
 	if (!vid_xll) vid[ 7: 1] = vld[ 7: 1];
 	if (!vid_xlm) vid[15: 8] = vld[15: 8];
-	if (!vid_xlh) vid[21:16] = vld[21:16];
+	if (!vid_xlh) vid[23:16] = vld[23:16];
+	if (!extra_ram) vid[23:22] = 2'b00;
 
 	pf071 = pf071_reg;
 	if (!vid_rr) pf071 = 0;
@@ -960,11 +966,12 @@ reg         dmaclk_d;
 
 always @(*) begin
 	dmaa = dma_reg;
-	if (~(resb & porb)) dmaa = 0;
 	if (~dmaclk_d & dmaclk) dmaa = dmaa + 1'd1;
 	if (!wdmal) dmaa[ 7: 1] = id[7:1];
 	if (!wdmam) dmaa[15: 8] = id[7:0];
 	if (!wdmah) dmaa[23:16] = id[7:0];
+	if (!extra_ram) dmaa[23:22] = 2'b00;
+	if (~(resb & porb)) dmaa = 0;
 end
 
 always @(posedge clk32) begin

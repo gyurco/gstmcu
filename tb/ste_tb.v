@@ -186,6 +186,7 @@ gstmcu gstmcu (
     .SINT(SINT),
 
     .st(1'b0),
+    .extra_ram(1'b0),
     .tos192k(1'b0),
     .viking_at_e8(1'b0),
     .viking_at_c0(1'b0),
