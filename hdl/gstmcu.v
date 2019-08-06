@@ -207,7 +207,7 @@ wire scrlsel = idev & ias & ilds & A[15:1] == { 12'h826, 3'b010 } & ~st; // FF82
 wire cartsel = idev & ias & A[15:1] == { 12'h900, 3'b000 } & ~st;
 wire butsel  = idev & ias & A[15:1] == { 12'h920, 3'b000 } & ~st;
 wire joysel  = idev & ias & A[15:1] == { 12'h920, 3'b001 } & ~st;
-wire padsel  = idev & ias & A[15:3] == { 12'h921, 1'b1 } & ~st;
+wire padsel  = idev & ias & A[15:3] == { 12'h921, 1'b0 } & ~st;
 wire pensel  = idev & ias & A[15:2] == { 12'h922, 2'b00 } & ~st;
 
 ////////// REGISTER SELECT DECODE //////////
