@@ -151,7 +151,7 @@ assign MFPCS_N = ~(idev & ias & A[15:6] == { 8'hFA, 2'b00 });  // FFFA0x-FFFA3x
 wire   isndcsb = ~(idev & ias & A[15:8] == 8'h88);             // FF88xx
 assign SNDIR   = ~isndcsb & ~irwz;
 assign SNDCS   = ~isndcsb & ~A[1];
-assign N6850   = ~(idev & ivma & A[15:3] == { 12'hFC0, 1'b0 });  // FFFC00-FFFC07
+assign N6850   = idev & ivma & A[15:3] == { 12'hFC0, 1'b0 };  // FFFC00-FFFC07
 wire   pifcsb  = ~(idev & ias & ilds & iuds & A[15:2] == { 12'h860, 2'b01 }); // FF8604-FF8607
 wire   ifcsb   = pifcsb & resb;
 assign FCS_N   = ifcsb;
