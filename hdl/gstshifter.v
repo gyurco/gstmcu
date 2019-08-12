@@ -84,6 +84,7 @@ wire low   = (shmode == 2'd0);
 reg [3:0] palette_r[15:0];
 reg [3:0] palette_g[15:0];
 reg [3:0] palette_b[15:0];
+reg       monocolor;
 
 // STE-only registers
 reg [3:0] pixel_offset;             // number of pixels to skip at begin of line
@@ -144,7 +145,7 @@ always @(posedge clk32) begin
 		// disable STE hard scroll features
 		pixel_offset <= 4'h0;
 
-		palette_b[ 0] <= 4'b111;
+		monocolor <= 1'b1;
 
 	end else begin
 		// a bit of delay to the shmode register write - Closure demo likes it
@@ -167,6 +168,7 @@ always @(posedge clk32) begin
 		// Palette registers are gated latches
 		if (CS & ~RW) begin
 			if(A[6:5] == 2'b10) begin
+				if (A[4:1] == 4'h0) monocolor <= MDOUT[0];
 				if(!ste) begin
 					palette_r[A[4:1]] <= { 1'b0, MDOUT[10:8] };
 					palette_g[A[4:1]] <= { 1'b0, MDOUT[ 6:4] };
@@ -204,7 +206,7 @@ shifter_video_async shifter_video_async (
     .DE(DE),
     .LOAD(LOAD_N),
     .rez(shmode),
-    .monocolor(~palette_b[0][0]),
+    .monocolor(~monocolor),
     .DIN(MDIN),
 //    .color_index(color_index)
     .color_index()
@@ -218,7 +220,7 @@ shifter_video shifter_video (
     .DE(DE),
     .LOAD(LOAD_N),
     .rez(shmode),
-    .monocolor(~palette_b[0][0]),
+    .monocolor(~monocolor),
     .scroll(|pixel_offset),
     .DIN(MDIN),
     .Reload(reload),
@@ -227,7 +229,7 @@ shifter_video shifter_video (
 );
 
 // ----------------------- monochrome video signal ---------------------------
-wire [3:0] mono_rgb = { 4{~shifted_color_index[0]} };
+wire [3:0] mono_rgb = { 4{shifted_color_index[0] ^ monocolor} };
 
 // ------------------------- colour video signal -----------------------------
 
