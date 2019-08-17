@@ -190,7 +190,7 @@ end
 // clock enable divider
 reg  [1:0] t;
 always @(posedge clk32, negedge resb)
-	if (!resb) t <= 2'b00; else t <= t + 1'd1;
+	if (!resb) t <= 2'b01; else t <= t + 1'd1;
 
 wire pclk_en = mono?1'b1:mid?~t[0]:low?t==2'b01:1'b0;
 
