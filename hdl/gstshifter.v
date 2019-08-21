@@ -122,7 +122,7 @@ always @(*) begin
 
 		if(ste) begin
 			// sound mode register
-			if(A == 6'h10) s_dout[7:0] = { mode[2], 5'd0, mode[1:0] };
+			if(A == 6'h10) s_dout[7:0] = { sndmode[2], 5'd0, sndmode[1:0] };
 			// mircowire
 			if(A == 6'h11) s_dout = mw_data_reg;
 			if(A == 6'h12) s_dout = mw_mask_reg;
@@ -155,9 +155,9 @@ always @(posedge clk32) begin
 
 			// writing special STE registers
 			if(ste) begin
-				if(A == 6'h32) begin
-					pixel_offset <= MDOUT[3:0];
-				end
+				// sound mode register
+				if(A == 6'h10) sndmode <= { MDOUT[7], MDOUT[1:0] };
+				if(A == 6'h32) pixel_offset <= MDOUT[3:0];
 			end
 			// make msb writeable if MiST video modes are enabled
 			if(A == 6'h30) shmode_d <= MDOUT[9:8];
@@ -308,7 +308,7 @@ assign shifted_color_index[3] = (pixel_offset == 4'd0) ? color_index[3] : (((pix
 
 wire clk_8_en = (t == 0);
 
-reg [2:0] mode;
+reg [2:0] sndmode;
 
 // micro wire
 reg [15:0] mw_data_reg, mw_mask_reg;
@@ -329,8 +329,6 @@ always @(posedge clk32) begin
 	if(!resb) begin
 		mw_cnt <= 7'h00;        // no micro wire transfer in progress
 	end else if (clk_8_en) begin
-		// sound mode register
-		if(mw_write && A == 6'h10) mode <= { MDOUT[7], MDOUT[1:0] };
 		// micro wire has a 16 bit interface
 		if(mw_write && A == 6'h12) mw_mask_reg <= MDOUT;
 	end
@@ -389,9 +387,9 @@ always @(posedge clk32) if (a2base_en) aclk_cnt <= aclk_cnt + 3'd1;
 reg aclk_en;
 always @(posedge clk32) begin
 	aclk_en <=  a2base_en & (
-	            (mode[1:0] == 2'b11)?a2base_en:             // 50 kHz
-	           ((mode[1:0] == 2'b10)?(aclk_cnt[0] == 0):    // 25 kHz
-	           ((mode[1:0] == 2'b01)?(aclk_cnt[1:0] == 0):  // 12.5 kHz
+	            (sndmode[1:0] == 2'b11)?a2base_en:             // 50 kHz
+	           ((sndmode[1:0] == 2'b10)?(aclk_cnt[0] == 0):    // 25 kHz
+	           ((sndmode[1:0] == 2'b01)?(aclk_cnt[1:0] == 0):  // 12.5 kHz
 	            (aclk_cnt == 0))));                         // 6.25 kHz
 end
 
@@ -428,7 +426,7 @@ always @(posedge clk32) begin
 	end else if (aclk_en) begin
 		// audio data in fifo? play it!
 		if(!fifo_empty) begin
-			if(!mode[2]) begin
+			if(!sndmode[2]) begin
 				audio_left  <= fifo_out[15:8] + 8'd128;   // high byte == left channel
 				audio_right <= fifo_out[ 7:0] + 8'd128;   // low byte == right channel
 			end else begin
@@ -438,7 +436,7 @@ always @(posedge clk32) begin
 			end
 			// increase fifo read pointer every sample in stereo mode and every
 			// second sample in mono mode
-			if(!mode[2] || bytesel) readP <= readP + 1'd1;
+			if(!sndmode[2] || bytesel) readP <= readP + 1'd1;
 		end
 	end
 end
