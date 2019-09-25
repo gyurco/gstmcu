@@ -353,7 +353,7 @@ mlatch #(.WIDTH(8)) lvd_ml(clk32, 1'b0, ~(resb & porb), ~wvidbmb, id[7:0], lvd[1
 mlatch #(.WIDTH(8)) lvd_hl(clk32, 1'b0, ~(resb & porb), ~wvidbhb, id[7:0], lvd[23:16]);
 
 wire [3:0] conf_reg;
-mlatch #(.WIDTH(4)) conf_l(clk32, 1'b0, ~(resb & porb), ~wconfigb, id[3:0], conf_reg[3:0]);
+mlatch #(.WIDTH(4)) conf_l(clk32, 1'b0, ~porb, ~wconfigb, id[3:0], conf_reg[3:0]);
 wire rs2b = ~conf_reg[2];
 wire rs3b = ~conf_reg[3];
 
