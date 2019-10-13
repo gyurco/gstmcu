@@ -798,7 +798,8 @@ vsyncgen vsyncgen (
 // sync to clk32
 wire       vertclk_en = hsc_load & m2clock_en_p;
 reg  [8:0] vsc;
-wire [8:0] vsc_load_val = { 1'b0, ~mde1, ~mde1, ~mde1 & ntsc, ~mde1 & ntsc, 1'b1, mde1, ~mde1 & ntsc, 1'b0 };
+wire [8:0] vsc_load_val_ste = { 1'b0, ~mde1, ~mde1, ~mde1 & ntsc, ~mde1 & ntsc, 1'b1, mde1, ~mde1 & ntsc, 1'b0 };
+wire [8:0] vsc_load_val_st  = mde1 ? 9'd11 : cpal ? 9'd199 : 9'd249;
 reg        vsc_load;
 
 reg        iivsync;
@@ -811,9 +812,16 @@ always @(posedge clk32, negedge resb) begin
 		iivsync <= 1;
 	end else if (vertclk_en) begin
 		vsc <= vsc + 1'd1;
-		if (vsc == 9'd511 | vsc_load) begin
+		// From the STE schematics, it seems the counter can be reloaded second time to another value
+		// if the mode registers are changed
+		if (~st && (vsc == 9'd511 || vsc_load)) begin
 			vsc_load <= ~vsc_load;
-			vsc <= vsc_load_val;
+			vsc <= vsc_load_val_ste;
+			iivsync <= 1;
+		end
+		// ST should reload the counter only once
+		if (st && vsc == 9'd511) begin
+			vsc <= vsc_load_val_st;
 			iivsync <= 1;
 		end
 		if (vsc == ivsync_set) iivsync <= 0;
