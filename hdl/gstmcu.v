@@ -813,7 +813,8 @@ always @(posedge clk32, negedge resb) begin
 	end else if (vertclk_en) begin
 		vsc <= vsc + 1'd1;
 		// From the STE schematics, it seems the counter can be reloaded second time to another value
-		// if the mode registers are changed
+		// if the mode registers are changed after the first reload (in the VBL handler for example).
+		// Confirmed by Level 16 fullscreen demo behavior on a real STe.
 		if (~st && (vsc == 9'd511 || vsc_load)) begin
 			vsc_load <= ~vsc_load;
 			vsc <= vsc_load_val_ste;
