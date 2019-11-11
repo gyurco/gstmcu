@@ -84,7 +84,7 @@ module cbms (
 	output      xq
 );
 
-wire dc;
+reg dc;
 
 lt2 lt2 (
 	.xr(xr),
@@ -113,7 +113,7 @@ module cbn (
 	output      co
 );
 
-wire dc;
+reg dc;
 
 lt2 lt2 (
 	.xr(xr),
@@ -144,7 +144,7 @@ module cb1 (
 	output      co
 );
 
-wire dc;
+reg dc;
 
 lt2 lt2 (
 	.xr(xr),
