@@ -59,7 +59,8 @@ module gstmcu (
     output IPL0_N,
     output IPL1_N,
     output IPL2_N,
-    output DTACK_N,
+    input  DTACK_N_I,
+    output DTACK_N_O,
     output IACK_N,
     output ROM0_N,
     output ROM1_N,
@@ -442,7 +443,7 @@ end
 
 always @(negedge MHZ8, negedge porb) begin
 	if (!porb) p8006 <= 1'b0;
-	else p8006 <= dtack;
+	else p8006 <= dtack & ~DTACK_N_I;
 end
 
 always @(posedge MHZ8, negedge porb, negedge ixdma) begin
@@ -467,7 +468,7 @@ wire fcsackb;
 register fcsackb_r(clk32, ~(porb & ias), 1'b0, ready, ifcsb, fcsackb);
 
 wire dtack_d, p8001_s, p8008_s, p8010_s;
-register dtack_d_r(clk32, 1'b0, !porb, ~MHZ8, dtack, dtack_d); // p8006
+register dtack_d_r(clk32, 1'b0, !porb, ~MHZ8, dtack & ~DTACK_N_I, dtack_d); // p8006
 register p8001_r(clk32, 1'b0, ~(porb & ixdma), MHZ8, p8008_s, p8001_s);
 register p8008_r(clk32, 1'b0, ~(porb & ixdma), MHZ8, p8001_s ^ ~(p8008_s & p8001_s & ~dtack_d), p8008_s);
 register p8010_r(clk32, ~(porb & ixdma), 1'b0, ~MHZ8, ~(p8001_s & p8008_s), p8010_s);
@@ -475,7 +476,7 @@ register p8010_r(clk32, ~(porb & ixdma), 1'b0, ~MHZ8, ~(p8001_s & p8008_s), p801
 wire   aso   = p8008_s | ~p8010_s;
 wire   dso   = (p8008_s & p8001_s) | (p8008_s & drw) | ~p8010_s;
 wire   dtack   = sndack | ~ramcycb | ~cmpcycb | ~romxb | ~regxackb | cartsel | syncsel | butr | joysel | padr | penr | ~fcsackb;
-assign DTACK_N = ~dtack;
+assign DTACK_N_O = ~dtack;
 
 /////////////// BUS ARBITRATION //////////////////
 
