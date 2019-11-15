@@ -111,13 +111,16 @@ module gstmcu (
 );
 
 ///////// ADDRESS BUS MUX ////////
+// The DMA and Video address should return dmma and vid if we want to be faithful to the original ASIC
+// however there are plenty of time after the address change until RAS_N is asserted, so
+// it's much better to use the registered values
 always @(*) begin
     casez ({ addrselb, ixdmab, snden, refb })
-        4'b00??: ADDR = dmaa; // DMA_ADDR
+        4'b00??: ADDR = dma_reg; // DMA_ADDR
         4'b01??: ADDR = A; // CPU_ADDR
         4'b1??0: ADDR = 0; // REFRESH_ADDR
         4'b1?11: ADDR = { 2'b0, snd }; // SND DMA ADDR
-        4'b1?01: ADDR = vid; // VIDEO ADDR
+        4'b1?01: ADDR = vid_reg; // VIDEO ADDR
     endcase
 end
 
