@@ -37,7 +37,7 @@ end
 
 always @(negedge clock) begin
     c_d <= c;
-    if  (~c_d & c)
+    if  (~c_d & c & ~r & ~s)
         val_reg <= d;
     else
         val_reg <= q;
