@@ -21,9 +21,11 @@
 //
 //============================================================================
 
-// TODO:
-// - pen, joystick, paddle registers
-// - less useful: refresh address generation
+// TODO for replacing a real chip:
+// - paddle, pen counters
+// - refresh address generation
+// - memory address multiplexer
+// - output enables
 
 module gstmcu (
     input clk32,
@@ -101,6 +103,12 @@ module gstmcu (
     input  SREQ,
     output SLOAD_N,
     output SINT,
+
+    output BUTTON_N,
+    output reg JOYWE_N,
+    output JOYRL_N,
+    output JOYWL,
+    output JOYRH_N,
 
     input  st,             // Atari ST compatibilty (mask STe registers)
     input  extra_ram,      // Allow > 4MB RAM (for CPU, Video and DMA)
@@ -323,6 +331,16 @@ register drw_r(clk32, ~(resb & porb), 1'b0, dmadirb, id[8], drw);
 wire penr = iuds & ilds & irwz & pensel;
 wire padr = ilds & irwz & padsel;
 wire butr = ilds & irwz & butsel;
+assign BUTTON_N = ~butr;
+assign JOYRL_N = ~(joysel & ilds & irwz);
+assign JOYWL = joysel & irwb & ilds;
+assign JOYRH_N = ~(joysel & iuds & irwz);
+
+always @(posedge clk32) begin
+    // RS Flip-flop
+    if (!resb || !JOYRL_N) JOYWE_N <= 1;
+    else if (JOYWL) JOYWE_N <= 0;
+end
 
 reg [9:8] idout_h;
 always @(*) begin

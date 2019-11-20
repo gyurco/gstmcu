@@ -186,6 +186,12 @@ gstmcu gstmcu (
     .SLOAD_N(sload_n),
     .SINT(SINT),
 
+    .BUTTON_N(),
+    .JOYWE_N(),
+    .JOYRL_N(),
+    .JOYWL(),
+    .JOYRH_N(),
+
     .st(1'b0),
     .extra_ram(1'b0),
     .tos192k(1'b0),
