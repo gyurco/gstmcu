@@ -363,12 +363,10 @@ always @(posedge clk32) begin
 
 		// mask register write
 		if(mw_mask_write) begin
-			// reset the transfer if it's written while running
-			if (mw_cnt != 0) begin
-				mw_cnt <= 7'h7f;
-				mw_mask_reg <= { MDOUT[14:0], MDOUT[15] };
-			end else
-				mw_mask_reg <= MDOUT;
+			mw_mask_reg <= MDOUT;
+			// stop transfer when the mask register is written during transfer
+			// Systematic Error demo relies on it
+			mw_cnt <= 0;
 		end
 	end
 end
