@@ -324,44 +324,52 @@ always @(posedge clk32) if (clk_8_en) CS8_enD <= CS;
 
 wire mw_write = ~CS8_enD & CS & ~RW;
 wire mw_data_write = mw_write && A == 6'h11;
+wire mw_mask_write = mw_write && A == 6'h12;
 
+// ----------- micro wire interface -----------
 always @(posedge clk32) begin
 	if(!resb) begin
 		mw_cnt <= 7'h00;        // no micro wire transfer in progress
 	end else if (clk_8_en) begin
-		// micro wire has a 16 bit interface
-		if(mw_write && A == 6'h12) mw_mask_reg <= MDOUT;
-	end
+		// writing the data register triggers the transfer
+		if(mw_data_write || mw_cnt != 0) begin
 
-	// ----------- micro wire interface -----------
-	// writing the data register triggers the transfer
-	if(clk_8_en && (mw_data_write || mw_cnt != 0)) begin
+			// decrease shift counter. Do this before the register write as
+			// register write has priority and should reload the counter
+			if(mw_cnt != 0)
+				mw_cnt <= mw_cnt - 7'd1;
 
-		// decrease shift counter. Do this before the register write as
-		// register write has priority and should reload the counter
-		if(mw_cnt != 0)
-			mw_cnt <= mw_cnt - 7'd1;
+			if(mw_data_write) begin
+				// first bit is evaluated imediately
+				mw_data_reg <= { MDOUT[14:0], 1'b0 };
+				mw_data <= MDOUT[15];
+				mw_cnt <= 7'h7f;
+			end else if(mw_cnt[2:0] == 3'b000) begin
+				// send/shift next bit every 8 clocks -> 1 MBit/s
+				mw_data_reg <= { mw_data_reg[14:0], 1'b0 };
+				mw_data <= mw_data_reg[15];
+			end
 
-		if(mw_data_write) begin
-			// first bit is evaluated imediately
-			mw_data_reg <= { MDOUT[14:0], 1'b0 };
-			mw_data <= MDOUT[15];
-			mw_cnt <= 7'h7f;
-		end else if(mw_cnt[2:0] == 3'b000) begin
-			// send/shift next bit every 8 clocks -> 1 MBit/s
-			mw_data_reg <= { mw_data_reg[14:0], 1'b0 };
-			mw_data <= mw_data_reg[15];
+			// rotate mask on first access and on every further 8 clocks
+			if(mw_data_write || (mw_cnt[2:0] == 3'b000)) begin
+				mw_mask_reg <= { mw_mask_reg[14:0], mw_mask_reg[15]};
+				// notify client of valid bits
+				mw_clk <= mw_mask_reg[15];
+			end
+
+			// indicate end of transfer
+			mw_done <= (mw_cnt == 7'h01);
 		end
 
-		// rotate mask on first access and on every further 8 clocks
-		if(mw_data_write || (mw_cnt[2:0] == 3'b000)) begin
-			mw_mask_reg <= { mw_mask_reg[14:0], mw_mask_reg[15]};
-			// notify client of valid bits
-			mw_clk <= mw_mask_reg[15];
+		// mask register write
+		if(mw_mask_write) begin
+			// reset the transfer if it's written while running
+			if (mw_cnt != 0) begin
+				mw_cnt <= 7'h7f;
+				mw_mask_reg <= { MDOUT[14:0], MDOUT[15] };
+			end else
+				mw_mask_reg <= MDOUT;
 		end
-
-		// indicate end of transfer
-		mw_done <= (mw_cnt == 7'h01);
 	end
 end
 
