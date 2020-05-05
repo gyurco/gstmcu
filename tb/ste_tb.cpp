@@ -258,6 +258,9 @@ int main(int argc, char **argv) {
 	tick(1);
 	tick(0);
 
+	tb->turbo = 0;
+//	tb->turbo = 1; // double bus speed
+
 	tb->AS_N = 1;
 	tb->UDS_N = 1;
 	tb->LDS_N = 1;
