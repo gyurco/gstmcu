@@ -705,7 +705,7 @@ mcucontrol mcucontrol (
 );
 
 wire vidclkb = turbo ? ~(~time3_s | vidb) : ~(time5_s | vidb); // vidclk is always single speed
-assign DCYC_N = dcyc_n_loc | ~vidclkb;
+assign DCYC_N = dcyc_n_loc | (~time6_s & turbo);
 
 wire sndclk = sndclk_loc | (~time1_s & turbo);
 wire sndclk_en = (turbo ? (time6_s & ~time7_s) : (addrselb & time4)) & snden;
