@@ -565,8 +565,9 @@ mlatch ram2a_l(clk32, 1'b0, !porb, turbo ? MHZ8 : clk4, ram2, ram2a);
 mlatch ldsl_l (clk32, 1'b0, !porb, turbo ? MHZ8 : clk4, ilds, ldsl);
 mlatch udsl_l (clk32, 1'b0, !porb, turbo ? MHZ8 : clk4, iuds, udsl);
 
-assign RAS0_N = ~( (time0 & addrselb & (~refb | (ram1a & vos))) | (~time0 & ~addrselb & ram1a & ~ramcycb) );
-assign RAS1_N = ~( (time0 & addrselb & (~refb | (ram2a & vos))) | (~time0 & ~addrselb & ram2a & ~ramcycb) );
+wire rascyc = turbo ? ~time3_t : time0_s;
+assign RAS0_N = ~( (rascyc & addrselb & (~refb | (ram1a & vos))) | (~rascyc & ~addrselb & ram1a & ~ramcycb) );
+assign RAS1_N = ~( (rascyc & addrselb & (~refb | (ram2a & vos))) | (~rascyc & ~addrselb & ram2a & ~ramcycb) );
 
 assign CAS0L_N = ~( (time2 & ~lcycsel & ram1a & vos) | (~time2 & lcycsel & ram1a & ~ramcycb & ldsl) );
 assign CAS0H_N = ~( (time2 & ~lcycsel & ram1a & vos) | (~time2 & lcycsel & ram1a & ~ramcycb & udsl) );
@@ -646,7 +647,7 @@ wire time0 = turbo ? time0_t : time0_s;
 wire time1 = turbo ? time1_t : time1_s;
 wire time2 = turbo ? time2_t : time2_s;
 wire time4 = turbo ? time4_t : time4_s;
-wire addrselb = turbo ? ~time3_t : ~time5_s;
+wire addrselb = turbo ? ~time4_t : ~time5_s;
 wire lcycsel = turbo ? time4_t : time7_s;
 wire cycsel_en = turbo ? (time3_t & ~time4_t) : (time6_s & ~time7_s);
 
@@ -661,6 +662,7 @@ mcucontrol mcucontrol (
     .clk32(clk32),
     .porb(porb),
     .resb(resb),
+    .turbo(turbo),
     .clk(clk),
     .ias(ias),
     .idev(idev),
@@ -704,12 +706,12 @@ mcucontrol mcucontrol (
     .sint(SINT)
 );
 
-wire vidclkb = turbo ? ~(~time3_s | vidb) : ~(time5_s | vidb); // vidclk is always single speed
-assign DCYC_N = dcyc_n_loc | (~time6_s & turbo);
+wire vidclkb = turbo ? ~(time0_s | vidb) : ~(time5_s | vidb); // vidclk is always single speed
+assign DCYC_N = dcyc_n_loc | (time5_s & turbo);
 
-wire sndclk = sndclk_loc | (~time1_s & turbo);
-wire sndclk_en = (turbo ? (time6_s & ~time7_s) : (addrselb & time4)) & snden;
-assign SLOAD_N = sload_n_loc | (~time1_s & turbo);
+wire sndclk = sndclk_loc | (time1_s & turbo);
+wire sndclk_en = (turbo ? (~time0_s & ~time7_s) : (addrselb & time4)) & snden;
+assign SLOAD_N = sload_n_loc | (time1_s & turbo);
 
 /////// HORIZONTAL SYNC GENERATOR ////////
 wire interlace = 0; // investigate is it useful or not?

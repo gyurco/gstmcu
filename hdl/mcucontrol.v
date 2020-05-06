@@ -4,6 +4,7 @@ module mcucontrol (
     input clk32,
     input porb,
     input resb,
+    input turbo,
     input clk,
     input ias,
     input idev,
@@ -133,7 +134,7 @@ always @(posedge clk32) begin
     if (c1_en_p) pk031 <= sndon;
 end
 
-mlatch sframe_l(clk32, 1'b0, !pk031, clk, ~(pk061 & sfrep), sframe);
+mlatch sframe_l(clk32, 1'b0, !pk031, !clk ^ turbo, ~(pk061 & sfrep), sframe);
 
 mlatch sint_l(clk32, !sintsb, 1'b0, c1_fall, 1'b0, sint);
 //always @(posedge clk32, negedge sintsb) begin
@@ -187,7 +188,7 @@ always @(posedge clk32, negedge ramsel) begin
 end
 
 wire dcyc;
-mlatch dcyc_l(clk32, !porb, 1'b0, clk, !resb | (time1 & addrselb & viden), dcyc); // pl025
+mlatch dcyc_l(clk32, !porb, 1'b0, clk ^ turbo, !resb | (time1 & addrselb & viden), dcyc); // pl025
 
 /////
 
