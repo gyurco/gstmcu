@@ -320,12 +320,13 @@ register gamecart_r(clk32, 1'b0, ~(resb & porb), irwb & cartsel & iuds, id[8], g
 wire noscroll;
 mlatch noscroll_l(clk32, ~(resb & porb), 1'b0, scrlsel, ~|id[3:0], noscroll);
 wire mde1;
-register mde1_r(clk32, 1'b0, ~(resb & porb), ~(irwb & mdesel & iuds), id[9], mde1);
+register mde1_r(clk32, 1'b0, ~(resb & porb), ~(irwb & mdesel & iuds) ^ st, id[9], mde1);
 wire mde0;
-register mde0_r(clk32, 1'b0, ~(resb & porb), ~(irwb & mdesel & iuds), id[8], mde0);
+register mde0_r(clk32, 1'b0, ~(resb & porb), ~(irwb & mdesel & iuds) ^ st, id[8], mde0);
 wire pal;
 register pal_r(clk32, 1'b0, ~(resb & porb), ~(irwb & syncsel & iuds), id[9], pal);
 wire ntsc = ~pal;
+
 wire drw;
 register drw_r(clk32, ~(resb & porb), 1'b0, dmadirb, id[8], drw);
 
