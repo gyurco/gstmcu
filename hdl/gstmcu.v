@@ -740,8 +740,10 @@ hsyncgen hsyncgen (
 
 // sync to clk32
 reg  [6:0] hsc;
-wire [6:0] hsc_load_val = { mde1 | interlace, 2'b00, mde1, 1'b0, ntsc & ~mde1, ~(ntsc & ~mde1) };
+wire [6:0] hsc_load_val_ste = { mde1 | interlace, 2'b00, mde1, 1'b0, ntsc & ~mde1, ~(ntsc & ~mde1) };
+wire [6:0] hsc_load_val_st = mde1 ? 7'h48 : ntsc ? 7'h1 : 7'h0;
 reg        hsc_load; // vertclkb
+wire       hsc_reload = hsc == 7'd127;
 
 reg        iihsync;
 wire [6:0] ihsync_set = mde1 ? 7'd121 : 7'd101;
@@ -754,9 +756,10 @@ always @(posedge clk32, negedge resb) begin
 		iihsync <= 1;
 	end else if (m2clock_en_p) begin
 		hsc <= hsc + 1'd1;
-		if (hsc == 7'd127 | hsc_load) begin
+		if (hsc_reload | hsc_load) begin
 			hsc_load <= ~hsc_load;
-			hsc <= hsc_load_val;
+			if (st & ~hsc_load) hsc <= hsc_load_val_st;
+			if (~st) hsc <= hsc_load_val_ste;
 		end
 		if (hsc == ihsync_set) iihsync <= 0;
 		if (hsc == ihsync_res) iihsync <= 1;
@@ -871,7 +874,7 @@ vsyncgen vsyncgen (
 `endif
 
 // sync to clk32
-wire       vertclk_en = hsc_load & m2clock_en_p;
+wire       vertclk_en = (st ? hsc_reload : hsc_load) & m2clock_en_p;
 reg  [8:0] vsc;
 wire [8:0] vsc_load_val_ste = { 1'b0, ~mde1, ~mde1, ~mde1 & ntsc, ~mde1 & ntsc, 1'b1, mde1, ~mde1 & ntsc, 1'b0 };
 wire [8:0] vsc_load_val_st  = mde1 ? 9'd11 : cpal ? 9'd199 : 9'd249;
