@@ -291,8 +291,8 @@ assign DOUT[ 7:0] = vid_o & snd_o & dma_o;
 
 /////// SYNC and INTERRUPT INTERFACE ///////
 
-assign HSYNC_N = iihsync;
-assign VSYNC_N = iivsync;
+assign HSYNC_N = resb & iihsync;
+assign VSYNC_N = resb & iivsync;
 assign IPL0_N = 1'b1;
 assign IPL1_N = MFPINT_N & (hintb | ~vintb);
 assign IPL2_N = MFPINT_N & vintb;
@@ -717,8 +717,8 @@ assign SLOAD_N = sload_n_loc | (time1_s & turbo);
 /////// HORIZONTAL SYNC GENERATOR ////////
 wire interlace = 0; // investigate is it useful or not?
 
-wire ihsync = ~iihsync;
-wire ivsync = ~iivsync;
+wire ihsync = ~(iihsync & resb);
+wire ivsync = ~(iivsync & resb);
 wire vertclk;
 
 // async
@@ -816,8 +816,8 @@ always @(posedge clk32, negedge porb) begin
 		{ hde_set_r1, hde_set_r2, hde_set_r3, hde_set_r4 } <= 0;
 		hde <= 0;
 	end else begin
-		if ((m2clock_en_p && hsc == ihsync_set) || ~iihsync) begin
-			// sync equivalent of ~iihsync async reset
+		if ((m2clock_en_p && hsc == ihsync_set) || ihsync) begin
+			// sync equivalent of ihsync async set
 			hdec <= 0;
 			hblank <= 0;
 
@@ -943,8 +943,8 @@ always @(posedge clk32, negedge porb) begin
 		vde <= 0;
 		vblank <= 0;
 	end else begin
-		if ((vertclk_en & vsc == ivsync_set) | ~iivsync) begin
-			// sync equivalent of async ~iivsync reset
+		if ((vertclk_en & vsc == ivsync_set) | ivsync) begin
+			// sync equivalent of async ivsync set
 			vdec <= 0;
 			vde <= 0;
 			vblank <= 0;
