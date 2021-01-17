@@ -81,6 +81,7 @@ module gstmcu (
     output CAS1H_N,
     output RAM_LDS, // RAM byte selects
     output RAM_UDS, // CAS signals come a bit late for a fast SDRAM controller
+    output REF, // indicates a refresh cycle
     output VPA_N,
     output MFPCS_N,
     output SNDIR,
@@ -132,6 +133,8 @@ always @(*) begin
         4'b1?01: ADDR = vid_reg; // VIDEO ADDR
     endcase
 end
+
+assign REF = addrselb & ~refb;
 
 /////// BUS INTERFACE //////////
 
