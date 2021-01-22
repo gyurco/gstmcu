@@ -330,8 +330,17 @@ wire pal;
 register pal_r(clk32, 1'b0, ~(resb & porb), ~(irwb & syncsel & iuds), id[9], pal);
 wire ntsc = ~pal;
 
-wire drw;
-register drw_r(clk32, ~(resb & porb), 1'b0, dmadirb, id[8], drw);
+reg drw;
+always @(posedge clk32, negedge resb, negedge porb) begin : drw_block
+	reg dmadirb_d;
+
+	if (!porb) drw <= 1;
+	else if (!resb) drw <= 1;
+	else begin
+		dmadirb_d <= dmadirb;
+		if (~dmadirb_d & dmadirb) drw <= id[8];
+	end
+end
 
 wire penr = iuds & ilds & irwz & pensel;
 wire padr = ilds & irwz & padsel;
@@ -493,11 +502,23 @@ end
 wire fcsackb;
 register fcsackb_r(clk32, ~(porb & ias), 1'b0, ready, ifcsb, fcsackb);
 
-wire dtack_d, p8001_s, p8008_s, p8010_s;
-register dtack_d_r(clk32, 1'b0, !porb, ~MHZ8, dtack & ~DTACK_N_I, dtack_d); // p8006
-register p8001_r(clk32, 1'b0, ~(porb & ixdma), MHZ8, p8008_s, p8001_s);
-register p8008_r(clk32, 1'b0, ~(porb & ixdma), MHZ8, p8001_s ^ ~(p8008_s & p8001_s & ~dtack_d), p8008_s);
-register p8010_r(clk32, ~(porb & ixdma), 1'b0, ~MHZ8, ~(p8001_s & p8008_s), p8010_s);
+reg dtack_d;
+always @(posedge clk32, negedge porb) begin
+	if (!porb) dtack_d <= 0;
+	else if (MHZ8_EN2) dtack_d <= dtack & ~DTACK_N_I;
+end
+
+reg p8001_s, p8008_s, p8010_s;
+always @(posedge clk32, negedge porb, negedge ixdma) begin
+	if (!porb) {p8001_s, p8008_s, p8010_s} <= 3'b001;
+	else if (!ixdma) {p8001_s, p8008_s, p8010_s} <= 3'b001;
+	else if (MHZ8_EN1) begin
+		p8001_s <= p8008_s;
+		p8008_s <= p8001_s ^ ~(p8008_s & p8001_s & ~dtack_d);
+	end else if (MHZ8_EN2) begin
+		p8010_s <= ~(p8001_s & p8008_s);
+	end
+end
 
 wire   aso   = p8008_s | ~p8010_s;
 wire   dso   = (p8008_s & p8001_s) | (p8008_s & drw) | ~p8010_s;
