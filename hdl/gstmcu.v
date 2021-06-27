@@ -204,7 +204,7 @@ wire viking_c0 = viking_at_c0 && A[23:18] == 6'b110000; // 256k at 0xc00000
 wire viking_e8 = viking_at_e8 && A[23:19] == 5'b11101;  // 512k at $e80000 for STEroids
 
 // Extra ram(4MB-14MB) enable
-wire iram_extra = fcx & extra_ram & (~A[23] | ~A[22] | (A[23] & A[22] & ~A[21]));
+wire iram_extra = fcx & extra_ram & ((A[23] ^ A[22]) | (A[23] & A[22] & ~A[21]));
 
 wire system = ifc2z | A[15:11] != 0;
 wire irama = |A[21:16];
