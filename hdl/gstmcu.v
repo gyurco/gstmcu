@@ -25,7 +25,6 @@
 // - paddle, pen counters
 // - refresh address generation
 // - memory address multiplexer
-// - output enables
 
 module gstmcu (
     input clk32,
@@ -44,6 +43,8 @@ module gstmcu (
     output reg [23:1] ADDR, // to RAM
     input  [15:0] DIN,
     output [15:0] DOUT,
+    output OE_L,
+    output OE_H,
     output CLK_O, // 16 MHz clock, here's an output
     output MHZ8,
     output MHZ8_EN1,
@@ -151,6 +152,12 @@ wire         iiack = ias & ifc0 & ifc1 & ifc2;
 wire         ifc2z = ifc2;
 wire         fcx = ifc0 ^ ifc1;
 wire [15:0]  id = DIN;
+
+// output enables
+reg          udenb;
+wire         doutb;
+assign       OE_H = ~udenb;
+assign       OE_L = ~doutb;
 
 //////// ADDRESS DECODE /////////
 
@@ -267,6 +274,7 @@ wire regxackb = ~((regs & (A[9] | ~A[10]) & (~dma | A[3]) & A[7:4] == 4'h0) | ~s
 // sound regs
 
 wire srgackb = ~(idev & ias & A[15:5] == { 8'h89, 3'b000 }) | st; // FF890x-FF891x
+wire sndrgb  = ~(~srgackb & ilds & irwz);
 wire smapb   = ~(idev & A[15:5] == { 8'h89, 3'b001 }) | st;       // FF892x-FF893x - sound regs in shifter
 
 wire rscntlb = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h890, 3'd0 }) | st;
@@ -286,6 +294,10 @@ wire rsftmb  = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h891, 3'd0 }) | st;
 wire wsftmb  = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h891, 3'd0 }) | st;
 wire rsftlb  = ~(idev & ias & ilds & irwz & A[15:1] == { 12'h891, 3'd1 }) | st;
 wire wsftlb  = ~(idev & ias & ilds & irwb & A[15:1] == { 12'h891, 3'd1 }) | st;
+
+wire padrb = 1; // TODO
+wire penrb = 1; // TODO
+assign doutb = ~(~sndrgb | ~padrb | ~penrb | (regs & (A[9] | ~A[10]) & (~dma | A[3]) & A[7:4] == 4'h0 & ilds & irwz));
 
 /////////// DATA BUS INTERFACE /////////////
 
@@ -361,7 +373,7 @@ always @(*) begin
 	idout_h = 2'b11;
 	if (cartsel & irwz & iuds) idout_h = { 1'b0, gamecart };
 	if (syncsel & irwz & iuds) idout_h = { pal, 1'b0 };
-//    udenb = ~(irwz & iuds & (cartsel | syncsel));
+	udenb = ~(irwz & iuds & (cartsel | syncsel));
 end
 
 ////////////// VIDEO REGISTERS ////////////////

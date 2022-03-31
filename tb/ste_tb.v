@@ -128,6 +128,8 @@ gstmcu gstmcu (
     .ADDR(ram_a), // to RAM
     .DIN(mbus_din),
     .DOUT(mcu_dout),
+    .OE_L(),
+    .OE_H(),
     .CLK_O(),
     .MHZ8(MHZ8),
     .MHZ8_EN1(MHZ8_EN1),
