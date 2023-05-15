@@ -17,7 +17,6 @@ To run the test:
 cd tb
 gzip -d stram.bin.gz
 make
-./ste_tb
 ```
 
 To see the genarated waveforms:
