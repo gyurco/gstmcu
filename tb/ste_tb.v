@@ -182,6 +182,8 @@ gstmcu gstmcu (
     .VSYNC_N(VSYNC_N),
     .DE(de),
     .BLANK_N(BLANK_N),
+    .BLANK_H_N(),
+    .BLANK_V_N(),
     .RDAT_N(rdat_n),
     .WE_N(we_n),
     .WDAT_N(wdat_n),

@@ -97,6 +97,8 @@ module gstmcu (
     output VSYNC_N,
     output reg DE,
     output reg BLANK_N,
+    output reg BLANK_H_N, // exported for custom use
+    output reg BLANK_V_N, // exported for custom use
     output RDAT_N,
     output WE_N,
     output WDAT_N,
@@ -1002,6 +1004,30 @@ always @(posedge clk32, negedge porb) begin
 			if (vblank_set) vblank <= 1;
 			if (vblank_reset) vblank <= 0;
 		end
+	end
+end
+
+//////// HDMI: BLANK GENERATION FOR A WHOLE FRAME ////////
+
+reg        mde1_l, cpal_l, cntsc_l;
+reg        vblank_l, hblank_l;
+always @(posedge clk32) begin
+	if (ivsync) begin
+		mde1_l <= mde1;
+		cpal_l <= cpal;
+		cntsc_l <= cntsc;
+	end
+	if (m2clock_en_p && hsc == ihsync_res) begin
+		if ((mde1_l & vdec == 9'd35 ) | (cntsc_l & vdec == 9'd15 ) | (cpal_l & vdec == 9'd24 )) vblank_l <= 1;
+		if ((mde1_l & vdec == 9'd435) | (cntsc_l & vdec == 9'd257) | (cpal_l & vdec == 9'd307)) vblank_l <= 0;
+	end
+	if (m2clock_en_n) begin
+		if ((mde1_l & hdec == 8'd3 ) | (cntsc_l & hdec == 8'd8) | (cpal_l & hdec == 8'd9)) hblank_l <= 1;
+		if ((mde1_l & hdec == 8'd43) | hdec == 8'd114) hblank_l <= 0;
+	end
+	if (m2clock_en_p) begin
+		BLANK_V_N <= vblank_l;
+		BLANK_H_N <= hblank_l;
 	end
 end
 
