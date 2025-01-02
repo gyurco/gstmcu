@@ -22,6 +22,8 @@ module clockgen (
 	output m2clock,
 	output m2clock_en_p,
 	output m2clock_en_n,
+	output khz500,
+	output khz500_en,
 	output clk4,
 	output latch
 );
@@ -129,5 +131,17 @@ always @(posedge clk32, negedge resb, negedge porb) begin
 
 	end
 end
+
+reg [1:0] khz500_cnt;
+always @(posedge clk32, negedge porb) begin
+	if (!porb)
+		khz500_cnt <= 0;
+	else if (m2clock_en_p) begin
+		khz500_cnt <= khz500_cnt + 1'd1;
+	end
+end
+
+assign khz500 = khz500_cnt[1];
+assign khz500_en = khz500_cnt == 0 && m2clock_en_p;
 
 endmodule

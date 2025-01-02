@@ -136,6 +136,8 @@ gstmcu gstmcu (
     .MHZ8_EN2(MHZ8_EN2),
     .MHZ4(MHZ4),
     .MHZ4_EN(MHZ4_EN),
+    .KHZ500(),
+    .KHZ500_EN(),
     .BR_N_I(br_n_i),
     .BR_N_O(br_n_o),
     .BG_N(bg_n),

@@ -51,6 +51,8 @@ module gstmcu (
     output MHZ8_EN2,
     output MHZ4,
     output MHZ4_EN,
+    output KHZ500,
+    output KHZ500_EN,
     input  RDY_N_I,
     output RDY_N_O,
     input  BG_N,
@@ -660,6 +662,8 @@ clockgen clockgen_s (
     .m2clock(m2clock),
     .m2clock_en_p(m2clock_en_p),
     .m2clock_en_n(m2clock_en_n),
+    .khz500(KHZ500),
+    .khz500_en(KHZ500_EN),
     .latch(latch_s)
 );
 
@@ -688,6 +692,8 @@ clockgen clockgen_t (
     .m2clock(),
     .m2clock_en_p(),
     .m2clock_en_n(),
+    .khz500(),
+    .khz500_en(),
     .latch(latch_t)
 );
 
